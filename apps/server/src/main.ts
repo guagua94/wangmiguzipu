@@ -17,8 +17,9 @@ async function bootstrap() {
   if (!require('fs').existsSync(uploadsDir)) require('fs').mkdirSync(uploadsDir, { recursive: true });
   app.use('/uploads', express.static(uploadsDir));
 
-  await app.listen(3001);
-  console.log('[wangmi-server] http://localhost:3001/api');
+  const port = process.env.PORT || 3001;
+  await app.listen(port, '0.0.0.0');
+  console.log(`[wangmi-server] http://0.0.0.0:${port}/api`);
 
   // 拍卖状态定时推进：启动后10秒首次执行，之后每分钟一次
   const auctionService = app.get(AuctionService);
