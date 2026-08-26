@@ -43,10 +43,10 @@ export class AuthService {
       cn: dto.cn, qq: dto.qq || '', wechat: dto.wechat || '',
       role: 'member', registerIp: ip, registerDevice: device,
     }));
-   // 风控：同 IP 短时多次注册 -> 提醒店主
-const oneDayAgo = new Date(Date.now() - 86400000);
-const recent = await this.userRepo.createQueryBuilder('u')
-  .where('u.registerIp = :ip AND u.createdAt > :oneDayAgo', { ip, oneDayAgo }).getCount();
+    // 风控：同 IP 短时多次注册 -> 提醒店主
+    const oneDayAgo = new Date(Date.now() - 86400000);
+    const recent = await this.userRepo.createQueryBuilder('u')
+      .where('u.registerIp = :ip AND u.createdAt > :oneDayAgo', { ip, oneDayAgo }).getCount();
     if (recent >= 3) {
       const owner = await this.userRepo.findOne({ where: { role: 'owner' } });
       if (owner) await this.userRepo.manager.getRepository(Notification).save(
