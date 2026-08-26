@@ -1,4 +1,7 @@
 import 'reflect-metadata';
+import * as dns from 'dns';
+// Railway 容器不支持 IPv6，强制 DNS 优先返回 IPv4
+dns.setDefaultResultOrder('ipv4first');
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { DataSource } from 'typeorm';
