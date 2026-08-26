@@ -1,0 +1,11 @@
+{
+  "name": "wangmi-guzi",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "server": "npm run dev -w apps/server",
+    "mobile": "npm run dev -w apps/mobile",
+    "admin": "npm run dev -w apps/admin"
+  }
+}

@@ -1,0 +1,136 @@
+
+> @wangmi/server@0.1.0 dev
+> ts-node --transpile-only -r tsconfig-paths/register src/main.ts
+
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[NestFactory] [39m[32mStarting Nest application...[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +17ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mJwtModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmCoreModule dependencies initialized[39m[38;5;3m +58ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mTypeOrmModule dependencies initialized[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[InstanceLoader] [39m[32mAppModule dependencies initialized[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuthController {/api/auth}:[39m[38;5;3m +21ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/register, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/login, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auth/me, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mUserController {/api/user}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/user/list, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/user/ban, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/user/reset-password, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/user/set-admin-perms, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/user/deactivate, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mShopController {/api/shop}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/shop/config, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/shop/config, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mGroupController {/api/group}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/series, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/series/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/series/create, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/series/update, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/good/save, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/batch-price, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/remain/:seriesId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/follow, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/my-orders, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/order/split, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/order/merge, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/jietuan, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/my-bills, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/all-bills, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/bill/submit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/bill/audit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/good/arrive, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/import, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/export/:seriesId, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/group/cn-self-check, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mBalanceController {/api/balance}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/balance/flows, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/balance/withdraw, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/balance/my-withdraws, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/balance/all-withdraws, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/balance/withdraw/finish, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mSaleController {/api/sale}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/list, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/save, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/restock, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/delete, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/import, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/buy, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/batch-buy, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/pay, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/audit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/pending-audit, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/my-buys, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/cancel-request, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/cancel-audit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/sale/pending-cancel, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAuctionController {/api/auction}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auction/list, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auction/detail/:id, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auction/save, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auction/deposit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auction/bid, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auction/pay, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auction/pending-deposits, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auction/audit-deposit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/auction/relist, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mTransferController {/api/transfer}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/transfer/mine, GET} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/transfer/all, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/transfer/create, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/transfer/confirm, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/transfer/audit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/transfer/pay, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/transfer/forward, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mClearingController {/api/clearing}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/clearing/create, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/clearing/mine, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/clearing/all, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/clearing/submit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/clearing/audit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/clearing/ship, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mAfterSaleController {/api/aftersale}:[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/aftersale/create, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/aftersale/mine, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/aftersale/all, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/aftersale/audit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/aftersale/ship-back, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/aftersale/refund, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/aftersale/restock, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/aftersale/shipped, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mNotifyController {/api/notify}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/notify/list, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/notify/read-all, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/notify/read-one, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/notify/unread-count, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mSecondController {/api/second}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/second/create, POST} route[39m[38;5;3m +1ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/second/mine, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/second/all, GET} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/second/submit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/second/audit, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RoutesResolver] [39m[32mUploadController {/api/upload}:[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[RouterExplorer] [39m[32mMapped {/api/upload/image, POST} route[39m[38;5;3m +0ms[39m
+[32m[Nest] 51128  - [39m2026/08/20 14:22:54 [32m    LOG[39m [38;5;3m[NestApplication] [39m[32mNest application successfully started[39m[38;5;3m +8ms[39m
+[31m[Nest] 51128  - [39m2026/08/20 14:22:54 [31m  ERROR[39m [38;5;3m[NestApplication] [39m[31mError: listen EADDRINUSE: address already in use :::3001[39m[38;5;3m +1ms[39m
+Error: listen EADDRINUSE: address already in use :::3001
+    at Server.setupListenHandle [as _listen2] (node:net:2167:16)
+    at listenInCluster (node:net:2224:12)
+    at Server.listen (node:net:2344:7)
+    at ExpressAdapter.listen (F:\谷子APP - 副本\wangmi\node_modules\@nestjs\platform-express\adapters\express-adapter.js:95:32)
+    at F:\谷子APP - 副本\wangmi\node_modules\@nestjs\core\nest-application.js:183:30
+    at new Promise (<anonymous>)
+    at NestApplication.listen (F:\谷子APP - 副本\wangmi\node_modules\@nestjs\core\nest-application.js:173:16)
+    at async bootstrap (F:\谷子APP - 副本\wangmi\apps\server\src\main.ts:19:3) {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 3001
+}
+npm error Lifecycle script `dev` failed with error:
+npm error code 1
+npm error path F:\谷子APP - 副本\wangmi\apps\server
+npm error workspace @wangmi/server@0.1.0
+npm error location F:\谷子APP - 副本\wangmi\apps\server
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c ts-node --transpile-only -r tsconfig-paths/register src/main.ts
