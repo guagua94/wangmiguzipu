@@ -25,8 +25,25 @@ import { SecondController, SecondService } from './modules/second';
 import { AddressController, AddressService, AddressModuleRef } from './modules/address';
 import { UploadController } from './modules/upload';
 
+const isPostgres = !!process.env.DATABASE_URL;
 const dbFile = path.join(__dirname, '..', 'wangmi.db');
-if (!fs.existsSync(dbFile)) fs.writeFileSync(dbFile, '');
+if (!isPostgres && !fs.existsSync(dbFile)) fs.writeFileSync(dbFile, '');
+
+const dbConfig: any = isPostgres
+  ? {
+      type: 'postgres',
+      url: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      entities,
+      synchronize: true,
+    }
+  : {
+      type: 'sqljs',
+      location: dbFile,
+      autoSave: true,
+      entities,
+      synchronize: true,
+    };
 
 @Injectable()
 export class AutoJietuanTask {
@@ -56,13 +73,7 @@ export class AutoJietuanTask {
 @Module({
   imports: [
     JwtModule.register({ secret: process.env.JWT_SECRET || 'wangmi-guzi-secret' }),
-    TypeOrmModule.forRoot({
-      type: 'sqljs',                 // 开发期零原生依赖；生产换 MySQL（mysql2 驱动）+ migration
-      location: dbFile,
-      autoSave: true,
-      entities,
-      synchronize: true,
-    }),
+    TypeOrmModule.forRoot(dbConfig),
     TypeOrmModule.forFeature(entities),
     AddressModuleRef,
   ],
