@@ -31,7 +31,7 @@ async function bootstrap() {
   // 数据库迁移：兼容旧数据
   const ds = app.get(DataSource);
   try { await ds.query(`ALTER TABLE series ADD COLUMN mode TEXT DEFAULT 'traditional'`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE series ADD COLUMN deadlineAt DATETIME`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE series ADD COLUMN deadlineAt TIMESTAMP`); } catch(e) {}
   try { await ds.query(`ALTER TABLE order_items ADD COLUMN status TEXT DEFAULT ''`); } catch(e) {}
   try { await ds.query(`ALTER TABLE goods ADD COLUMN unitFee DECIMAL(10,2) DEFAULT '0.1'`); } catch(e) {}
   try { await ds.query(`ALTER TABLE sale_goods ADD COLUMN unitFee DECIMAL(10,2) DEFAULT '0.1'`); } catch(e) {}
