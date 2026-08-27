@@ -83,7 +83,7 @@ export class Series {
   @Column({ default: '' }) eta: string;                // 预计到货
   @Column({ default: '' }) freightRule: string;
   @Column({ default: 'traditional' }) mode: 'traditional' | 'matching'; // 截团模式：traditional=传统截团，matching=成配
-  @Column({ type: 'datetime', nullable: true }) deadlineAt: Date | null;    // 截团截止时间
+  @Column({ type: 'timestamp', nullable: true }) deadlineAt: Date | null;    // 截团截止时间
   @Column({ default: '' }) deadline: string;           // 截团时间说明（兼容旧数据）
   @Column({ default: true }) allowTransfer: boolean;    // 是否允许转单
   @Column({ default: true }) transferNeedAudit: boolean;
@@ -123,8 +123,8 @@ export class Order {
   @Column({ default: '', type: 'text' }) opLog: string; // 操作留痕
   @Column({ default: '' }) blindShipMode: string;        // 'video' | 'random' | ''  盲抽发货模式
   @Column({ default: '' }) screenshot: string;           // 付款截图（直售订单）
-  @Column({ type: 'datetime', nullable: true }) paidAt: Date | null;     // 付款入囤时间
-  @Column({ type: 'datetime', nullable: true }) cancelRequestAt: Date | null; // 直售取消申请时间
+  @Column({ type: 'timestamp', nullable: true }) paidAt: Date | null;     // 付款入囤时间
+  @Column({ type: 'timestamp', nullable: true }) cancelRequestAt: Date | null; // 直售取消申请时间
   @CreateDateColumn() createdAt: Date;
 }
 
@@ -211,7 +211,7 @@ export class Auction {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: '0' }) curPrice: string;
   @Column({ default: 0 }) bidCount: number;
   @Column({ type: 'bigint', default: 0 }) wonAt: number;  // 进入"待付款"状态的时间戳(ms)，用于超时计算
-  @Column({ type: 'datetime', nullable: true }) stockSince: Date | null;  // 付款入囤时间
+  @Column({ type: 'timestamp', nullable: true }) stockSince: Date | null;  // 付款入囤时间
   @CreateDateColumn() createdAt: Date;
 }
 
@@ -275,7 +275,7 @@ export class Clearing {
   @Column({ default: '' }) packImg: string;
   @Column({ default: '' }) trackingNo: string;
   @Column({ default: '' }) addressSnapshot: string;     // 清货时收货地址快照(json)
-  @Column({ type: 'datetime', nullable: true }) shippedAt: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) shippedAt: Date | null;
   @CreateDateColumn() createdAt: Date;
 }
 
