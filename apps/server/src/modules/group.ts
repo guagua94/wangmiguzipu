@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Req, Param, BadRequestException, Forbidden
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { Repository, In, DataSource } from 'typeorm';
 import { Request } from 'express';
-import { Series, Good, Order, OrderItem, KidneyBill, User, Notification } from '../entities';
+import { Series, Good, Order, OrderItem, KidneyBill, User, Notification, AdminLog } from '../entities';
 import { JwtUser, checkRole } from '../common';
 
 export class GroupService {
@@ -13,6 +13,7 @@ export class GroupService {
     @InjectRepository(OrderItem) private itemRepo: Repository<OrderItem>,
     @InjectRepository(KidneyBill) private billRepo: Repository<KidneyBill>,
     @InjectRepository(User) private userRepo: Repository<User>,
+    @InjectRepository(AdminLog) private adminLogRepo: Repository<AdminLog>,
     private dataSource: DataSource,
   ) {}
 
@@ -463,6 +464,118 @@ ${new Date().toISOString()} ${auditor?.cn || '系统'} 砍单：${item.name} ×$
     };
   }
 
+  /** 预检：拼团活动能否删除 */
+  async canDeleteSeries(id: number) {
+    const series = await this.seriesRepo.findOneBy({ id });
+    if (!series) throw new BadRequestException('活动不存在');
+
+    const orders = await this.orderRepo.find({ where: { seriesId: id } });
+    const stats = {
+      totalOrders: orders.length,
+      shippedOrders: 0,
+      clearingOrders: 0,
+      paidOrders: 0,
+      paidAmount: '0.00',
+      cancelPending: 0,
+      secondBillCount: 0,
+    };
+
+    const paidStatuses = ['待付款', '已提交截图', '审核通过', '囤货中', '待清货'];
+    const clearingStatuses = ['待清货'];
+    const shippedStatuses = ['已发货', '已完成'];
+
+    for (const o of orders) {
+      if (shippedStatuses.includes(o.status)) stats.shippedOrders++;
+      else if (clearingStatuses.includes(o.status)) stats.clearingOrders++;
+      else if (paidStatuses.includes(o.status)) { stats.paidOrders++; stats.paidAmount = (+stats.paidAmount + +o.total).toFixed(2); }
+      else if (o.status === '取消申请中') stats.cancelPending++;
+    }
+
+    // 检查二次收款
+    const secondBills = await this.billRepo.createQueryBuilder('b')
+      .where('b.seriesId = :id', { id })
+      .andWhere("b.state IN ('待付款', '已提交截图', '审核通过')")
+      .getCount();
+    stats.secondBillCount = secondBills;
+
+    const blocked = stats.shippedOrders > 0 || stats.clearingOrders > 0 || stats.paidOrders > 0 || stats.cancelPending > 0 || stats.secondBillCount > 0;
+
+    let reason = '';
+    if (stats.shippedOrders > 0) reason = `本活动有 ${stats.shippedOrders} 个订单已发货或在清货排发中，请先确认收货后再删除。`;
+    else if (stats.clearingOrders > 0) reason = `本活动有 ${stats.clearingOrders} 个订单在清货排发中，请先确认收货后再删除。`;
+    else if (stats.paidOrders > 0) reason = `本活动有 ${stats.paidOrders} 人已付款（共 ¥${stats.paidAmount}），请先处理退款后再删除。`;
+    else if (stats.cancelPending > 0) reason = `本活动有 ${stats.cancelPending} 个取消申请待审核，请先处理完再删除。`;
+    else if (stats.secondBillCount > 0) reason = `本活动已进行二次收款，请先结清二肾后再删除。`;
+
+    return { canDelete: !blocked, reason, stats };
+  }
+
+  /** 删除拼团活动（硬删除，含事务） */
+  async deleteSeries(id: number, operator: JwtUser) {
+    const check = await this.canDeleteSeries(id);
+    if (!check.canDelete) throw new BadRequestException(check.reason);
+
+    const series = await this.seriesRepo.findOneByOrFail({ id });
+
+    // 收集所有排过谷的用户ID
+    const orders = await this.orderRepo.find({ where: { seriesId: id } });
+    const userIds = [...new Set(orders.map(o => o.userId))];
+
+    await this.dataSource.transaction(async manager => {
+      // 1. 删除转单记录（如果有）
+      const transferRepo = manager.getRepository('Transfer');
+      await transferRepo.createQueryBuilder().delete().where('seriesId = :id', { id }).execute();
+
+      // 2. 删除订单明细
+      const orderIds = orders.map(o => o.id);
+      if (orderIds.length) {
+        await manager.createQueryBuilder().delete().from('order_items').where('orderId IN (:...ids)', { ids: orderIds }).execute();
+      }
+
+      // 3. 删除肾表
+      await manager.createQueryBuilder().delete().from('kidney_bills').where('seriesId = :id', { id }).execute();
+
+      // 4. 删除二次收款记录
+      await manager.createQueryBuilder().delete().from('second_bills').where('seriesId = :id', { id }).execute();
+
+      // 5. 删除订单
+      await manager.createQueryBuilder().delete().from('orders').where('seriesId = :id', { id }).execute();
+
+      // 6. 删除谷子
+      await manager.createQueryBuilder().delete().from('goods').where('seriesId = :id', { id }).execute();
+
+      // 7. 删除活动
+      await manager.createQueryBuilder().delete().from('series').where('id = :id', { id }).execute();
+
+      // 8. 写入审计日志
+      const logRepo = manager.getRepository(AdminLog);
+      await logRepo.save(logRepo.create({
+        action: 'delete_series',
+        targetId: id,
+        targetName: series.name,
+        operatorId: operator.id,
+        operatorCn: operator.cn,
+        details: JSON.stringify({
+          name: series.name,
+          deletedOrders: orders.length,
+          affectedUsers: userIds.length,
+        }),
+      }));
+    });
+
+    // 事务成功后：发送通知（事务外，失败不影响删除结果）
+    const notiRepo = this.dataSource.getRepository(Notification);
+    for (const uid of userIds) {
+      await notiRepo.save(notiRepo.create({
+        userId: uid,
+        title: `拼团「${series.name}」已删除`,
+        body: `店长已删除拼团「${series.name}」，您的排谷记录已清除。如有疑问请联系店长。`,
+      }));
+    }
+
+    return { ok: true, deletedOrders: orders.length, notifiedUsers: userIds.length };
+  }
+
   private async log(seriesId: number, uid: number, msg: string) {
     const s = await this.seriesRepo.findOneBy({ id: seriesId });
     if (s) {
@@ -604,6 +717,18 @@ export class GroupController {
     return this.svc.cutOrder(b.itemId, b.goodId, b.qty, req.user!);
   }
 
+  @Get('series/:id/delete-check')
+  async checkDelete(@Req() req: Request & { user?: JwtUser }, @Param('id') id: string) {
+    checkRole(req.user, ['owner']);
+    return this.svc.canDeleteSeries(+id);
+  }
+
+  @Post('series/:id/delete')
+  async deleteSeries(@Req() req: Request & { user?: JwtUser }, @Param('id') id: string) {
+    checkRole(req.user, ['owner']);
+    return this.svc.deleteSeries(+id, req.user!);
+  }
+
   @Post('good/delete')
   async deleteGood(@Req() req: Request & { user?: JwtUser }, @Body() b: { id: number }) {
     checkRole(req.user, ['owner', 'admin']);
@@ -611,4 +736,4 @@ export class GroupController {
   }
 }
 
-export const GroupModuleRef = TypeOrmModule.forFeature([Series, Good, Order, OrderItem, KidneyBill, User]);
+export const GroupModuleRef = TypeOrmModule.forFeature([Series, Good, Order, OrderItem, KidneyBill, User, AdminLog]);
