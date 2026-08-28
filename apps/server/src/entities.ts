@@ -317,9 +317,21 @@ export class Address {
   @Column({ default: false }) isDefault: boolean;
   @CreateDateColumn() createdAt: Date;
 }
+/** 管理员操作审计日志 */
+@Entity('admin_logs')
+export class AdminLog {
+  @PrimaryGeneratedColumn() id: number;
+  @Column() action: string;
+  @Column() targetId: number;
+  @Column({ default: '' }) targetName: string;
+  @Column() operatorId: number;
+  @Column({ default: '' }) operatorCn: string;
+  @Column({ default: '' }) details: string;
+  @CreateDateColumn() createdAt: Date;
+}
 
 export const entities = [
   User, BalanceFlow, Notification, ShopConfig, Series, Good, Order, OrderItem,
   KidneyBill, SecondBill, SaleGood, Auction, AuctionBid, AuctionDeposit,
-  Transfer, Clearing, AfterSale, Withdrawal, Address,
+  Transfer, Clearing, AfterSale, Withdrawal, Address, AdminLog,
 ];
