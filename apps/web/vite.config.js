@@ -6,6 +6,7 @@ export default defineConfig({
   preview: {
     port: 3000,
     host: true,
+    allowedHosts: true,
     proxy: { '/api': 'https://wangmiserver-production.up.railway.app' },
   },
 });
