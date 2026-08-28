@@ -40,10 +40,16 @@ async function bootstrap() {
   try { await ds.query(`ALTER TABLE auction_deposits ADD COLUMN auditNote TEXT DEFAULT ''`); } catch(e) {}
   try { await ds.query(`ALTER TABLE shop_config ADD COLUMN unitFees TEXT DEFAULT '[{"name":"拍立得 / 透卡 / 明信片","fee":0.1,"note":"纸片类小件"},{"name":"吧唧 / 立牌 / 色纸 / 文件夹","fee":0.2,"note":"亚克力/铁皮/纸质中件"},{"name":"手办 / 其他","fee":0.5,"note":"大件/其他"}]'`); } catch(e) {}
 
-  // 确保 wangmi 账号存在且密码正确
+  // 确保 wangmi 账号存在且密码正确（处理 CN 冲突）
   const userRepo = ds.getRepository('User');
   let wangmi = await userRepo.findOne({ where: { account: 'wangmi' } });
   if (!wangmi) {
+    const conflict = await userRepo.findOne({ where: { cn: '汪咪店主' } });
+    if (conflict) {
+      conflict.cn = '原_' + conflict.cn + '_' + Date.now();
+      await userRepo.save(conflict);
+      console.log('[seed] renamed conflicting CN for account ' + conflict.account);
+    }
     wangmi = userRepo.create({
       account: 'wangmi',
       passwordHash: '$2a$10$MUu7likKwg1CDIsHadE2KOlfNIMpA2B7yugoo0NKoCpzRP/o1rHPS',
