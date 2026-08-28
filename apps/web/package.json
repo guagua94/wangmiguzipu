@@ -2,11 +2,11 @@
   "name": "@wangmi/web",
   "version": "0.1.0",
   "private": true,
-"scripts": { 
-  "dev": "vite --port 5174",
-  "build": "vite build",
-  "preview": "vite preview --port 3000 --host"
-}
+  "scripts": {
+    "dev": "vite --port 5174",
+    "build": "vite build",
+    "preview": "vite preview --port 3000 --host"
+  },
   "dependencies": { "vue": "^3.4.0" },
   "devDependencies": { "vite": "^5.4.0", "@vitejs/plugin-vue": "^5.1.0" }
 }
