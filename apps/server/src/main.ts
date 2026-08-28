@@ -1,4 +1,7 @@
 import 'reflect-metadata';
+import * as dns from 'dns';
+// Railway 容器不支持 IPv6，强制 DNS 优先返回 IPv4
+dns.setDefaultResultOrder('ipv4first');
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -44,5 +47,25 @@ async function bootstrap() {
   try { await ds.query(`ALTER TABLE auction_deposits ADD COLUMN screenshot TEXT DEFAULT ''`); } catch(e) {}
   try { await ds.query(`ALTER TABLE auction_deposits ADD COLUMN auditNote TEXT DEFAULT ''`); } catch(e) {}
   try { await ds.query(`ALTER TABLE shop_config ADD COLUMN unitFees TEXT DEFAULT '[{"name":"拍立得 / 透卡 / 明信片","fee":0.1,"note":"纸片类小件"},{"name":"吧唧 / 立牌 / 色纸 / 文件夹","fee":0.2,"note":"亚克力/铁皮/纸质中件"},{"name":"手办 / 其他","fee":0.5,"note":"大件/其他"}]'`); } catch(e) {}
+
+  // 种子数据：确保存在 owner 账号 wangmi
+  const userRepo = ds.getRepository('User');
+  const existingOwner = await userRepo.findOne({ where: { role: 'owner' } });
+  if (!existingOwner) {
+    const wangmiExists = await userRepo.findOne({ where: { account: 'wangmi' } });
+    if (!wangmiExists) {
+      await userRepo.save(userRepo.create({
+        account: 'wangmi',
+        passwordHash: '$2a$10$MUu7likKwg1CDIsHadE2KOlfNIMpA2B7yugoo0NKoCpzRP/o1rHPS',
+        cn: '汪咪店主',
+        qq: '10000',
+        wechat: 'wangmi',
+        role: 'owner',
+        balance: '0.00',
+      }));
+      console.log('[seed] created owner: wangmi / 汪咪店主');
+    }
+  }
 }
+
 bootstrap();
