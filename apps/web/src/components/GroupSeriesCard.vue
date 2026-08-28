@@ -9,7 +9,10 @@
           <span class="gsc-ip muted">{{ card.ip }}</span>
         </div>
       </div>
-      <span class="tag" :class="statusClass">{{ card.status }}</span>
+      <div class="gsc-actions">
+        <button v-if="deletable" class="gsc-delete-btn" @click.stop="$emit('delete')" title="删除活动">🗑️</button>
+        <span class="tag" :class="statusClass">{{ card.status }}</span>
+      </div>
     </div>
 
     <!-- 进度条 -->
@@ -60,9 +63,10 @@ import { computed } from 'vue';
 const props = defineProps({
   card: { type: Object, required: true },
   expanded: { type: Boolean, default: false },
+  deletable: { type: Boolean, default: false },
 });
 
-defineEmits(['expand']);
+defineEmits(['expand', 'delete']);
 
 const statusClass = computed(() => {
   if (props.card.status === '进行中') return 'pink';
@@ -201,6 +205,31 @@ const statusClass = computed(() => {
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
+  margin-top: 8px;
+  border-top: 1px solid var(--bg, #F2F2F7);
+  padding-top: 8px;
+}
+
+.gsc-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.gsc-delete-btn {
+  background: none;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background .2s;
+  opacity: .6;
+}
+
+.gsc-delete-btn:hover {
+  background: rgba(255, 59, 48, .1);
+  opacity: 1;
 }
 
 .gsc-countdown {
