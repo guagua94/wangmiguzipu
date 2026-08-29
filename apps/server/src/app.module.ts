@@ -58,10 +58,10 @@ export class AutoJietuanTask {
         });
         for (const s of due) {
           try {
-            await this.group.jietuan(s.id, 1); // uid=1 系统定时截团
+            await this.group.jietuan(s.id, 1);
             console.log(`[auto-jietuan] 系列 #${s.id} "${s.name}" 已自动截团`);
           } catch (e: any) {
-            console.error(`[auto-jietuan] 系列 #${s.id} 自动截团失败:`, e.message);
+            console.error(`[auto-jietuan] 系列 #${s.id} 截团失败:`, e.message);
           }
         }
       } catch (e) { /* 静默失败，不影响服务 */ }

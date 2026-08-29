@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, BadRequestException } from '@nestjs/common';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Request } from 'express';
@@ -13,6 +13,7 @@ export class ShopService {
     return c;
   }
   async save(patch: Partial<ShopConfig>) {
+    if (patch.groupFreeDays < 0 || patch.groupOverDays < 0 || patch.saleFreeDays < 0 || patch.saleOverDays < 0) throw new BadRequestException('天数不能为负数');
     const c = await this.get();
     Object.assign(c, patch);
     await this.repo.save(c);

@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Req, BadRequestException } from '@nestjs/c
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Request } from 'express';
-import { User, BalanceFlow, Withdrawal, Notification } from '../entities';
+import { User, BalanceFlow, Withdrawal, Notification, Money } from '../entities';
 import { JwtUser, checkRole } from '../common';
 
 /** 余额：记账制。流水 append-only，余额由事务内同步更新。 */
@@ -19,14 +19,14 @@ export class BalanceService {
       const userRepo = manager.getRepository(User);
       const flowRepo = manager.getRepository(BalanceFlow);
       const u = await userRepo.findOneByOrFail({ id: uid });
-      u.balance = (+u.balance + amount).toFixed(2);
+      u.balance = Money.of(+u.balance + amount);
       await userRepo.save(u);
-      await flowRepo.save(flowRepo.create({ userId: uid, amount: amount.toFixed(2), type, note, refId }));
+      await flowRepo.save(flowRepo.create({ userId: uid, amount: Money.of(amount), type, note, refId }));
       return u.balance;
     });
     // 事务成功后发通知（通知失败不影响余额）
     const nRepo = this.userRepo.manager.getRepository(Notification);
-    await nRepo.save(nRepo.create({ userId: uid, title: '余额变动', body: `${note} +¥${amount.toFixed(2)}，当前余额 ¥${newBalance}` }));
+    await nRepo.save(nRepo.create({ userId: uid, title: '余额变动', body: `${note} +¥${Money.of(amount)}，当前余额 ¥${newBalance}` }));
     return newBalance;
   }
 
@@ -36,9 +36,9 @@ export class BalanceService {
       const flowRepo = manager.getRepository(BalanceFlow);
       const u = await userRepo.findOneByOrFail({ id: uid });
       if (+u.balance + 1e-9 < amount) throw new BadRequestException('余额不足');
-      u.balance = (+u.balance - amount).toFixed(2);
+      u.balance = Money.of(+u.balance - amount);
       await userRepo.save(u);
-      await flowRepo.save(flowRepo.create({ userId: uid, amount: (-amount).toFixed(2), type, note, refId }));
+      await flowRepo.save(flowRepo.create({ userId: uid, amount: Money.of(-amount), type, note, refId }));
       return u.balance;
     });
     return newBalance;
@@ -56,10 +56,10 @@ export class BalanceService {
       const wdRepo = manager.getRepository(Withdrawal);
       const u = await userRepo.findOneByOrFail({ id: uid });
       if (+u.balance + 1e-9 < amount) throw new BadRequestException('余额不足');
-      u.balance = (+u.balance - amount).toFixed(2);
+      u.balance = Money.of(+u.balance - amount);
       await userRepo.save(u);
-      await flowRepo.save(flowRepo.create({ userId: uid, amount: (-amount).toFixed(2), type: '提现冻结', note: `提现申请冻结 ¥${amount.toFixed(2)}（${method}）` }));
-      return await wdRepo.save(wdRepo.create({ userId: uid, amount: amount.toFixed(2), method }));
+      await flowRepo.save(flowRepo.create({ userId: uid, amount: Money.of(-amount), type: '提现冻结', note: `提现申请冻结 ¥${Money.of(amount)}（${method}）` }));
+      return await wdRepo.save(wdRepo.create({ userId: uid, amount: Money.of(amount), method }));
     });
     return wd;
   }
@@ -80,7 +80,7 @@ export class BalanceService {
     await this.wdRepo.update(id, { state: '已完成' });
     // 通知用户提现已完成
     const nRepo = this.userRepo.manager.getRepository(Notification);
-    await nRepo.save(nRepo.create({ userId: w.userId, title: '提现完成', body: `提现 ¥${w.amount} 已由 ${auditor.cn} 确认完成（${w.method}）` }));
+    await nRepo.save(nRepo.create({ userId: w.userId, title: '提现完成', body: `提现 ¥${Money.of(w.amount)} 已由 ${auditor.cn} 确认完成（${w.method}）` }));
     return { ok: true };
   }
 
@@ -93,13 +93,13 @@ export class BalanceService {
       const flowRepo = manager.getRepository(BalanceFlow);
       await wdRepo.update(id, { state: '已拒绝' });
       const u = await userRepo.findOneByOrFail({ id: w.userId });
-      u.balance = (+u.balance + +w.amount).toFixed(2);
+      u.balance = Money.of(+u.balance + +w.amount);
       await userRepo.save(u);
-      await flowRepo.save(flowRepo.create({ userId: w.userId, amount: w.amount, type: '提现退还', note: `提现申请被拒绝，退还冻结金额 ¥${w.amount}（${auditor.cn} 操作）` }));
+      await flowRepo.save(flowRepo.create({ userId: w.userId, amount: Money.of(w.amount), type: '提现退还', note: `提现申请被拒绝，退还冻结金额 ¥${Money.of(w.amount)}（${auditor.cn} 操作）` }));
     });
     // 事务成功后发通知
     const nRepo = this.userRepo.manager.getRepository(Notification);
-    await nRepo.save(nRepo.create({ userId: w.userId, title: '提现被拒绝', body: `提现 ¥${w.amount} 被拒绝，冻结金额已退回余额` }));
+    await nRepo.save(nRepo.create({ userId: w.userId, title: '提现被拒绝', body: `提现 ¥${Money.of(w.amount)} 被拒绝，冻结金额已退回余额` }));
     return { ok: true };
   }
 }

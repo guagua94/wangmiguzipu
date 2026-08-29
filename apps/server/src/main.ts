@@ -63,7 +63,6 @@ async function bootstrap() {
     wangmi = await userRepo.save(wangmi);
     console.log('[seed] created owner: wangmi');
   }
-  }
 }
 
 bootstrap();

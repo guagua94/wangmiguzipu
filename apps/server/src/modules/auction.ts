@@ -120,6 +120,8 @@ export class AuctionService {
   /** 出价：校验有效出价 ≥ 当前价+最低加价；最后5分钟自动延长3分钟（服务端时间） */
   async bid(uid: number, auctionId: number, price: number) {
     await this.tickStates();
+    const auction = await this.repo.findOneBy({ id: auctionId });
+    if (!auction) throw new BadRequestException('拍卖不存在');
 
     const { a, won, extended } = await this.dataSource.transaction(async manager => {
       const aRepo = manager.getRepository(Auction);

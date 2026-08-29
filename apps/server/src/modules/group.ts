@@ -34,6 +34,7 @@ export class GroupService {
   }
 
   async createSeries(b: Partial<Series>, uid: number) {
+    if (!b.name?.trim()) throw new BadRequestException('系列名称不能为空');
     const s = await this.seriesRepo.save(this.seriesRepo.create({ ...b, status: b.status || '预排' }));
     const result = await this.seriesRepo.findOneByOrFail({ id: s.id });
     await this.log(s.id, uid, '创建系列');
@@ -379,16 +380,6 @@ ${new Date().toISOString()} ${auditor?.cn || '系统'} 砍单：${item.name} ×$
       await billRepo.update(billId, { state: '已提交截图', screenshot });
       return { paidOff: false, rest, usedBalance: useBal };
     });
-  }
-    if (rest <= 0) {
-      // 余额全额抵扣，直接销账
-      await this.billRepo.update(billId, { state: '已销账' });
-      await this.orderRepo.update(b.orderId, { status: '囤货中', paidAt: new Date() });
-      return { paidOff: true, usedBalance: useBal };
-    }
-    if (!screenshot) throw new BadRequestException(`需扫码支付 ¥${rest.toFixed(2)}，请上传付款截图`);
-    await this.billRepo.update(billId, { state: '已提交截图', screenshot });
-    return { paidOff: false, rest, usedBalance: useBal };
   }
 
    /** 店主/管理员审核：通过销账 / 打回 */

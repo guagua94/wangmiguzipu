@@ -32,7 +32,9 @@ export class UploadController {
   async uploadImage(@Req() req: Request & { user?: JwtUser }) {
     checkRole(req.user, []);
     const file = (req as any).file;
-    if (!file) throw new BadRequestException('未收到文件');
+    if (!file) throw new BadRequestException('请上传文件');
+    if (file.size > 10 * 1024 * 1024) throw new BadRequestException('文件大小不能超过10MB');
+    if (!file.mimetype?.startsWith('image/')) throw new BadRequestException('只支持图片文件');
     return { url: `/uploads/${file.filename}` };
   }
 }

@@ -70,6 +70,8 @@ export class SaleService {
   /** 批量购买：多个直售谷子合为单笔订单，一起结算（事务保护，防止高并发超卖） */
   async batchBuy(uid: number, items: { goodId: number; qty: number }[], blindShipMode?: string) {
     if (!items || items.length === 0) throw new BadRequestException('购物车为空');
+    const goodIds = items.map(it => it.goodId);
+    if (new Set(goodIds).size !== goodIds.length) throw new BadRequestException('购物车中存在重复商品');
     return this.repo.manager.transaction(async transactionalEntityManager => {
       const saleRepo = transactionalEntityManager.getRepository(SaleGood);
       const orderRepo = transactionalEntityManager.getRepository(Order);
@@ -84,6 +86,7 @@ export class SaleService {
           where: { id: it.goodId },
           lock: { mode: 'pessimistic_write' },
         });
+        if (it.qty > 99) throw new BadRequestException(`${g.name} 单次购买数量不能超过99`);
         if (g.stock < it.qty) throw new BadRequestException(`${g.name} 库存不足（剩 ${g.stock}）`);
         if (g.cat === '盲抽') hasBlind = true;
         g.stock -= it.qty;
