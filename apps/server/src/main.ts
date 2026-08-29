@@ -11,6 +11,10 @@ import * as express from 'express';
 import * as path from 'path';
 
 async function bootstrap() {
+    if (!process.env.JWT_SECRET) {
+    console.error('[FATAL] JWT_SECRET environment variable is required. Set it in Railway dashboard → Variables.');
+    process.exit(1);
+  }
   const app = await NestFactory.create<INestApplication>(AppModule, { cors: true });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: false }));
