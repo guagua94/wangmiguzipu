@@ -55,13 +55,14 @@ async function bootstrap() {
       await userRepo.save(conflict);
       console.log('[seed] renamed conflicting CN for account ' + conflict.account);
     }
-    wangmi = userRepo.create({
+      wangmi = userRepo.create({
       account: 'wangmi',
       passwordHash: '$2a$10$MUu7likKwg1CDIsHadE2KOlfNIMpA2B7yugoo0NKoCpzRP/o1rHPS',
-    wangmi.role = 'owner';
-    wangmi.cn = '汪咪店主';
-    await userRepo.save(wangmi);
-    console.log('[seed] updated owner: wangmi');
+      cn: '汪咪店主', qq: '10000', wechat: 'wangmi', role: 'owner', balance: '0.00',
+    });
+    wangmi = await userRepo.save(wangmi);
+    console.log('[seed] created owner: wangmi');
+  }
   }
 }
 
