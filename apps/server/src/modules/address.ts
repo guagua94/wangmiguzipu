@@ -95,30 +95,35 @@ export class AddressController {
   /** 列出我的地址 */
   @Get('list')
   async list(@Req() req: Request & { user?: JwtUser }) {
+    checkRole(req.user, [])；
     return this.svc.list(req.user!.id);
   }
 
   /** 新增 */
   @Post('create')
   async create(@Req() req: Request & { user?: JwtUser }, @Body() b: any) {
+    checkRole(req.user, [])；
     return this.svc.create(req.user!.id, b);
   }
 
   /** 编辑 */
   @Post('update')
   async update(@Req() req: Request & { user?: JwtUser }, @Body() b: any) {
+    checkRole(req.user, [])；
     return this.svc.update(req.user!.id, b.id, b);
   }
 
   /** 删除 */
   @Post('delete')
   async remove(@Req() req: Request & { user?: JwtUser }, @Body() b: { id: number }) {
+    checkRole(req.user, [])；
     return this.svc.remove(req.user!.id, b.id);
   }
 
   /** 设为默认 */
   @Post('default')
   async setDefault(@Req() req: Request & { user?: JwtUser }, @Body() b: { id: number }) {
+    checkRole(req.user, [])；
     return this.svc.setDefault(req.user!.id, b.id);
   }
 
