@@ -275,13 +275,15 @@
             <p class="muted">暂无拼团系列，点击「新建拼团系列」开始</p>
           </div>
           <div class="group-series-grid">
-        <GroupSeriesCard
-  :card="card"
-  :expanded="..."
-  :deletable="store.user?.role === 'owner'"
-  @delete="handleDeleteSeries(card)"
-  ...
-/>
+            <GroupSeriesCard
+              v-for="card in seriesCards"
+              :key="card.id"
+              :card="card"
+              :expanded="expandedCardId === card.id"
+              :deletable="store.user?.role === 'owner'"
+              @expand="expandedCardId = expandedCardId === card.id ? null : card.id"
+              @delete="handleDeleteSeries(card)"
+            />
           </div>
         </template>
 
@@ -3648,6 +3650,7 @@ function openMemberProfile(user) {
 }
 const newGood = reactive({ name: '', cat: '', price: 15, limit: 10, unitFee: 0.1, img: '' });
 const priceOp = ref('mul'); const priceVal = ref(0.9);
+const expandedCardId = ref(null);
 const newAuction = reactive({ name: '', startPrice: 20, stepPrice: 2, buyNow: 80, deposit: 10, img: '' });
 const newAuctionStart = ref('');
 const newAuctionEnd = ref('');
