@@ -109,18 +109,6 @@ export class AppModule implements OnModuleInit, NestModule {
   async onModuleInit() {
     // 启动自动截团定时任务
     this.autoJietuan.start();
-
-    // 初始化：店主账号 + 店铺设置 + 演示数据
-    const userRepo = this.ds.getRepository('User');
-    let owner = await userRepo.findOne({ where: { account: 'owner' } });
-    if (!owner) {
-      owner = userRepo.create({
-        account: 'owner', passwordHash: await bcrypt.hash('123456', 10),
-        cn: '汪咪店主', role: 'owner', qq: '10000', wechat: 'wangmi',
-      });
-      await userRepo.save(owner);
-      console.log('[seed] 店主账号 owner/123456');
-    }
     const cfgRepo = this.ds.getRepository('ShopConfig');
     if (!await cfgRepo.count()) await cfgRepo.save(cfgRepo.create({}));
 
