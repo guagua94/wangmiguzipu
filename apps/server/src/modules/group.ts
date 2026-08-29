@@ -288,29 +288,40 @@ ${new Date().toISOString()} ${auditor?.cn || '系统'} 砍单：${item.name} ×$
     }));
   }
 
-  /** 截团：冻结排表 → 生成肾表 → 通知 */
+  /** 截团：冻结排表 → 生成肾表 → 通知（事务保护） */
   async jietuan(seriesId: number, uid: number) {
     const s = await this.seriesRepo.findOneByOrFail({ id: seriesId });
     if (s.status !== '进行中' && s.status !== '预排') throw new BadRequestException(`状态 ${s.status} 不可截团`);
 
     const orders = await this.orderRepo.find({ where: { seriesId, status: '跟排中' } });
-    const notifRepo = this.seriesRepo.manager.getRepository(Notification);
 
+    // 核心数据操作：全部在事务内
+    await this.dataSource.transaction(async manager => {
+      const billRepo = manager.getRepository(KidneyBill);
+      const orderRepo = manager.getRepository(Order);
+      const seriesRepo = manager.getRepository(Series);
+
+      for (const o of orders) {
+        await billRepo.save(billRepo.create({
+          userId: o.userId, seriesId, orderId: o.id, total: o.total, state: '待付款',
+        }));
+        await orderRepo.update(o.id, { status: '待付款' });
+      }
+      await seriesRepo.update(seriesId, { status: '已截团' });
+    });
+
+    // 事务成功后发通知（通知失败不影响截团结果）
+    const notifRepo = this.seriesRepo.manager.getRepository(Notification);
     for (const o of orders) {
-      await this.billRepo.save(this.billRepo.create({
-        userId: o.userId, seriesId, orderId: o.id, total: o.total, state: '待付款',
-      }));
-      await this.orderRepo.update(o.id, { status: '待付款' });
       await notifRepo.save(notifRepo.create({
         userId: o.userId, title: '拼团已截团',
         body: `「${s.name}」已截团，肾表已生成（¥${o.total}），请前往我的肾表付款`,
       }));
     }
-    await this.seriesRepo.update(seriesId, { status: '已截团' });
+
     await this.log(seriesId, uid, `截团：生成 ${orders.length} 张肾表`);
     return { bills: orders.length };
   }
-
 
   /** 我的肾表 */
   async myBills(uid: number) {
