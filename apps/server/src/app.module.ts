@@ -72,7 +72,7 @@ export class AutoJietuanTask {
 
 @Module({
   imports: [
-    JwtModule.register({ secret: process.env.JWT_SECRET || 'wangmi-guzi-secret' }),
+    JwtModule.register({ secret: process.env.JWT_SECRET! }),
     TypeOrmModule.forRoot(dbConfig),
     TypeOrmModule.forFeature(entities),
     AddressModuleRef,
