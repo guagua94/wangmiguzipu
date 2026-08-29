@@ -560,7 +560,7 @@ ${new Date().toISOString()} ${auditor?.cn || '系统'} 砍单：${item.name} ×$
       // 2. 删除订单明细
       const orderIds = orders.map(o => o.id);
       if (orderIds.length) {
-        await manager.createQueryBuilder().delete().from('order_items').where('orderId IN (:...ids)', { ids: orderIds }).execute();
+        await manager.createQueryBuilder().delete().from('order_items').where('orderId IN (:ids)', { ids: orderIds }).execute();
       }
 
       // 3. 删除肾表
