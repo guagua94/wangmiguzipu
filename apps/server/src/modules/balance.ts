@@ -13,43 +13,56 @@ export class BalanceService {
     @InjectRepository(Withdrawal) private wdRepo: Repository<Withdrawal>,
   ) {}
 
-  /** 入账（正数）；返回新余额。note 描述来源 */
-  async credit(uid: number, amount: number, type: string, note: string, refId = '') {
+   async credit(uid: number, amount: number, type: string, note: string, refId = '') {
     if (amount <= 0) throw new BadRequestException();
-    const u = await this.userRepo.findOneByOrFail({ id: uid });
-    u.balance = (+u.balance + amount).toFixed(2);
-    await this.userRepo.save(u);
-    await this.flowRepo.save(this.flowRepo.create({ userId: uid, amount: amount.toFixed(2), type, note, refId }));
+    const newBalance = await this.userRepo.manager.transaction(async manager => {
+      const userRepo = manager.getRepository(User);
+      const flowRepo = manager.getRepository(BalanceFlow);
+      const u = await userRepo.findOneByOrFail({ id: uid });
+      u.balance = (+u.balance + amount).toFixed(2);
+      await userRepo.save(u);
+      await flowRepo.save(flowRepo.create({ userId: uid, amount: amount.toFixed(2), type, note, refId }));
+      return u.balance;
+    });
+    // 事务成功后发通知（通知失败不影响余额）
     const nRepo = this.userRepo.manager.getRepository(Notification);
-    await nRepo.save(nRepo.create({ userId: uid, title: '余额变动', body: `${note} +¥${amount.toFixed(2)}，当前余额 ¥${u.balance}` }));
-    return u.balance;
+    await nRepo.save(nRepo.create({ userId: uid, title: '余额变动', body: `${note} +¥${amount.toFixed(2)}，当前余额 ¥${newBalance}` }));
+    return newBalance;
   }
 
-  /** 扣减（余额须足够） */
-  async debit(uid: number, amount: number, type: string, note: string, refId = '') {
-    const u = await this.userRepo.findOneByOrFail({ id: uid });
-    if (+u.balance + 1e-9 < amount) throw new BadRequestException('余额不足');
-    u.balance = (+u.balance - amount).toFixed(2);
-    await this.userRepo.save(u);
-    await this.flowRepo.save(this.flowRepo.create({ userId: uid, amount: (-amount).toFixed(2), type, note, refId }));
-    return u.balance;
+   async debit(uid: number, amount: number, type: string, note: string, refId = '') {
+    const newBalance = await this.userRepo.manager.transaction(async manager => {
+      const userRepo = manager.getRepository(User);
+      const flowRepo = manager.getRepository(BalanceFlow);
+      const u = await userRepo.findOneByOrFail({ id: uid });
+      if (+u.balance + 1e-9 < amount) throw new BadRequestException('余额不足');
+      u.balance = (+u.balance - amount).toFixed(2);
+      await userRepo.save(u);
+      await flowRepo.save(flowRepo.create({ userId: uid, amount: (-amount).toFixed(2), type, note, refId }));
+      return u.balance;
+    });
+    return newBalance;
   }
 
   async flows(uid: number) {
     return this.flowRepo.find({ where: { userId: uid }, order: { id: 'desc' }, take: 100 });
   }
 
-  async applyWithdraw(uid: number, amount: number, method: string) {
+   async applyWithdraw(uid: number, amount: number, method: string) {
     if (amount <= 0) throw new BadRequestException('金额无效');
-    const u = await this.userRepo.findOneByOrFail({ id: uid });
-    if (+u.balance + 1e-9 < amount) throw new BadRequestException('余额不足');
-    // 立即冻结：扣减余额并记流水，退款时再退还
-    u.balance = (+u.balance - amount).toFixed(2);
-    await this.userRepo.save(u);
-    await this.flowRepo.save(this.flowRepo.create({ userId: uid, amount: (-amount).toFixed(2), type: '提现冻结', note: `提现申请冻结 ¥${amount.toFixed(2)}（${method}）` }));
-    return this.wdRepo.save(this.wdRepo.create({ userId: uid, amount: amount.toFixed(2), method }));
+    const wd = await this.userRepo.manager.transaction(async manager => {
+      const userRepo = manager.getRepository(User);
+      const flowRepo = manager.getRepository(BalanceFlow);
+      const wdRepo = manager.getRepository(Withdrawal);
+      const u = await userRepo.findOneByOrFail({ id: uid });
+      if (+u.balance + 1e-9 < amount) throw new BadRequestException('余额不足');
+      u.balance = (+u.balance - amount).toFixed(2);
+      await userRepo.save(u);
+      await flowRepo.save(flowRepo.create({ userId: uid, amount: (-amount).toFixed(2), type: '提现冻结', note: `提现申请冻结 ¥${amount.toFixed(2)}（${method}）` }));
+      return await wdRepo.save(wdRepo.create({ userId: uid, amount: amount.toFixed(2), method }));
+    });
+    return wd;
   }
-
   async myWithdraws(uid: number) {
     return this.wdRepo.find({ where: { userId: uid }, order: { id: 'desc' } });
   }
@@ -71,16 +84,20 @@ export class BalanceService {
     return { ok: true };
   }
 
-  /** 拒绝提现：退还冻结的余额 */
-  async rejectWithdraw(id: number, auditor: JwtUser) {
+   async rejectWithdraw(id: number, auditor: JwtUser) {
     const w = await this.wdRepo.findOneByOrFail({ id });
     if (w.state !== '待处理') throw new BadRequestException('仅待处理可拒绝');
-    await this.wdRepo.update(id, { state: '已拒绝' });
-    // 退还冻结的余额
-    const u = await this.userRepo.findOneByOrFail({ id: w.userId });
-    u.balance = (+u.balance + +w.amount).toFixed(2);
-    await this.userRepo.save(u);
-    await this.flowRepo.save(this.flowRepo.create({ userId: w.userId, amount: w.amount, type: '提现退还', note: `提现申请被拒绝，退还冻结金额 ¥${w.amount}（${auditor.cn} 操作）` }));
+    await this.userRepo.manager.transaction(async manager => {
+      const wdRepo = manager.getRepository(Withdrawal);
+      const userRepo = manager.getRepository(User);
+      const flowRepo = manager.getRepository(BalanceFlow);
+      await wdRepo.update(id, { state: '已拒绝' });
+      const u = await userRepo.findOneByOrFail({ id: w.userId });
+      u.balance = (+u.balance + +w.amount).toFixed(2);
+      await userRepo.save(u);
+      await flowRepo.save(flowRepo.create({ userId: w.userId, amount: w.amount, type: '提现退还', note: `提现申请被拒绝，退还冻结金额 ¥${w.amount}（${auditor.cn} 操作）` }));
+    });
+    // 事务成功后发通知
     const nRepo = this.userRepo.manager.getRepository(Notification);
     await nRepo.save(nRepo.create({ userId: w.userId, title: '提现被拒绝', body: `提现 ¥${w.amount} 被拒绝，冻结金额已退回余额` }));
     return { ok: true };

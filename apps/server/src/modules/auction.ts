@@ -1,6 +1,6 @@
 import { Controller, Get, Post, Body, Req, Param, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
-import { Repository, In, LessThanOrEqual } from 'typeorm';
+import { Repository, In, LessThanOrEqual, DataSource } from 'typeorm';
 import { Request } from 'express';
 import { Auction, AuctionBid, AuctionDeposit, User, Notification, Series, Order, OrderItem } from '../entities';
 import { JwtUser, checkRole } from '../common';
@@ -18,6 +18,7 @@ export class AuctionService {
     @InjectRepository(Order) private orderRepo: Repository<Order>,
     @InjectRepository(OrderItem) private itemRepo: Repository<OrderItem>,
     private balance: BalanceService,
+    private dataSource: DataSource,
   ) {}
 
   async list() {
@@ -119,32 +120,51 @@ export class AuctionService {
   /** 出价：校验有效出价 ≥ 当前价+最低加价；最后5分钟自动延长3分钟（服务端时间） */
   async bid(uid: number, auctionId: number, price: number) {
     await this.tickStates();
-    const a = await this.repo.findOneByOrFail({ id: auctionId });
-    if (a.state !== '拍卖中') throw new ForbiddenException(`当前状态（${a.state}）不可出价`);
-    const dep = await this.depRepo.findOne({ where: { auctionId, userId: uid, state: '已缴' } });
-    if (!dep) throw new ForbiddenException('请先缴纳保证金');
-    const min = +a.curPrice > 0 ? +a.curPrice + +a.stepPrice : +a.startPrice + +a.stepPrice;
-    if (price < min - 1e-9) throw new BadRequestException(`出价需 ≥ ¥${min.toFixed(2)}`);
-    await this.bidRepo.save(this.bidRepo.create({ auctionId, userId: uid, price: price.toFixed(2) }));
-    let extended = false;
-    let end = +a.endTime;
-    const FIVE = 5 * 60 * 1000;
-    if (end - Date.now() < FIVE) { end = Math.max(end, Date.now()) + 3 * 60 * 1000; extended = true; }
-    // 一口价立即成交
-    if (+a.buyNow > 0 && price >= +a.buyNow - 1e-9) {
-      await this.repo.update(auctionId, { curPrice: (+a.buyNow).toFixed(2), bidCount: a.bidCount + 1, endTime: end, state: '待付款', winnerId: uid, wonAt: Date.now() });
+
+    const { a, won, extended } = await this.dataSource.transaction(async manager => {
+      const aRepo = manager.getRepository(Auction);
+      const bidRepo = manager.getRepository(AuctionBid);
+
+      // 行锁：防止并发出价竞态
+      const a = await aRepo.findOne({ where: { id: auctionId }, lock: { mode: 'pessimistic_write' } });
+      if (!a) throw new ForbiddenException('拍卖不存在');
+      if (a.state !== '拍卖中') throw new ForbiddenException(`当前状态（${a.state}）不可出价`);
+
+      const dep = await this.depRepo.findOne({ where: { auctionId, userId: uid, state: '已缴' } });
+      if (!dep) throw new ForbiddenException('请先缴纳保证金');
+
+      const min = +a.curPrice > 0 ? +a.curPrice + +a.stepPrice : +a.startPrice + +a.stepPrice;
+      if (price < min - 1e-9) throw new BadRequestException(`出价需 ≥ ¥${min.toFixed(2)}`);
+
+      await bidRepo.save(bidRepo.create({ auctionId, userId: uid, price: price.toFixed(2) }));
+
+      let extended = false;
+      let end = +a.endTime;
+      const FIVE = 5 * 60 * 1000;
+      if (end - Date.now() < FIVE) { end = Math.max(end, Date.now()) + 3 * 60 * 1000; extended = true; }
+
+      // 一口价立即成交
+      if (+a.buyNow > 0 && price >= +a.buyNow - 1e-9) {
+        await aRepo.update(auctionId, { curPrice: (+a.buyNow).toFixed(2), bidCount: a.bidCount + 1, endTime: end, state: '待付款', winnerId: uid, wonAt: Date.now() });
+        return { a, won: true, extended: false };
+      }
+
+      await aRepo.update(auctionId, { curPrice: price.toFixed(2), bidCount: a.bidCount + 1, endTime: end });
+      return { a, won: false, extended };
+    });
+
+    if (won) {
       await this.notify(uid, '拍卖中标（一口价）', `「${a.name}」你以一口价 ¥${a.buyNow} 成交！24小时内付款（保证金抵扣），超时将转给次高出价者或流拍`);
       return { won: true, extended: false };
     }
-    await this.repo.update(auctionId, { curPrice: price.toFixed(2), bidCount: a.bidCount + 1, endTime: end });
-    // 通知之前最高出价者被超越
+
+    // 通知之前最高出价者被超越（事务外，失败不影响出价结果）
     const lastBids = await this.bidRepo.find({ where: { auctionId }, order: { id: 'desc' }, take: 2 });
     if (lastBids.length === 2 && lastBids[1].userId !== uid) {
       await this.notify(lastBids[1].userId, '拍卖出价被超越', `「${a.name}」有新出价 ¥${price.toFixed(2)}，你已不是最高出价者`);
     }
     return { ok: true, extended };
   }
-
   /** 查询我的保证金状态：待审核/已缴/无 */
   async myDepositState(auctionId: number, uid: number) {
     const dep = await this.depRepo.findOne({ where: { auctionId, userId: uid } });
