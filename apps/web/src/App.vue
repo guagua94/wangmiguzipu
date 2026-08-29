@@ -275,13 +275,13 @@
             <p class="muted">暂无拼团系列，点击「新建拼团系列」开始</p>
           </div>
           <div class="group-series-grid">
-            <GroupSeriesCard
-              v-for="card in seriesCards"
-              :key="card.id"
-              :card="card"
-              :expanded="curSeriesId === card.id"
-              @expand="openGroupWorkspace(card.id)"
-            />
+        <GroupSeriesCard
+  :card="card"
+  :expanded="..."
+  :deletable="store.user?.role === 'owner'"
+  @delete="handleDeleteSeries(card)"
+  ...
+/>
           </div>
         </template>
 
@@ -3783,6 +3783,26 @@ async function submitGoodEdit() {
   alert('修改已保存'); goodEditForm.show = false;
   if (groupWorkspaceView.value) { await refreshGroupWorkspace(); } else { openSeriesAdmin(curSeriesId.value); }
 }
+    async function handleDeleteSeries(card) {
+    try {
+      // 1. 预检
+      const check = await api('GET', `/group/series/${card.id}/delete-check`);
+      if (!check.canDelete) {
+        alert(check.reason || '无法删除此活动');
+        return;
+      }
+
+      // 2. 二次确认
+      if (!confirm(`确认删除拼团「${card.name}」？\n此操作不可恢复，所有排谷记录将被清除。`)) return;
+
+      // 3. 执行删除
+      await api('POST', `/group/series/${card.id}/delete`);
+      alert('拼团已删除');
+      await loadSeries(); // 刷新列表
+    } catch (e) {
+      alert(e.message || '删除失败');
+    }
+  }
 async function deleteGood(g) {
   if (!confirm('确认删除谷子「' + g.name + '」？')) return;
   await api('POST', '/group/good/delete', { id: g.id });
