@@ -344,21 +344,42 @@ ${new Date().toISOString()} ${auditor?.cn || '系统'} 砍单：${item.name} ×$
     const b = await this.billRepo.findOneByOrFail({ id: billId });
     if (b.userId !== uid) throw new ForbiddenException();
     if (b.state !== '待付款') throw new BadRequestException('当前状态不可提交');
-    const total = +b.total;
-    let useBal = Math.max(0, Math.min(useBalanceAmount || 0, total));
-    let rest = total;
-    if (useBal > 0) {
-      const user = await this.userRepo.findOneByOrFail({ id: uid });
-      const bal = +user.balance;
-      if (bal < useBal) throw new BadRequestException(`余额不足（当前 ¥${bal.toFixed(2)}，需抵扣 ¥${useBal.toFixed(2)}）`);
-      user.balance = (bal - useBal).toFixed(2);
-      await this.userRepo.save(user);
-      rest = total - useBal;
-      await this.billRepo.update(billId, {
-        total: rest.toFixed(2),
-        opLog: `${b.opLog}\n${new Date().toISOString()} 余额抵扣 ¥${useBal.toFixed(2)}（剩余待付 ¥${rest.toFixed(2)}）`,
-      });
-    }
+
+    return await this.dataSource.transaction(async manager => {
+      const billRepo = manager.getRepository(KidneyBill);
+      const orderRepo = manager.getRepository(Order);
+      const userRepo = manager.getRepository(User);
+
+      const bill = await billRepo.findOneByOrFail({ id: billId });
+      const total = +bill.total;
+      let useBal = Math.max(0, Math.min(useBalanceAmount || 0, total));
+      let rest = total;
+
+      if (useBal > 0) {
+        const user = await userRepo.findOneByOrFail({ id: uid });
+        const bal = +user.balance;
+        if (bal < useBal) throw new BadRequestException(`余额不足（当前 ¥${bal.toFixed(2)}，需抵扣 ¥${useBal.toFixed(2)}）`);
+        user.balance = (bal - useBal).toFixed(2);
+        await userRepo.save(user);
+        rest = total - useBal;
+        await billRepo.update(billId, {
+          total: rest.toFixed(2),
+          opLog: `${bill.opLog}\n${new Date().toISOString()} 余额抵扣 ¥${useBal.toFixed(2)}（剩余待付 ¥${rest.toFixed(2)}）`,
+        });
+      }
+
+      if (rest <= 0) {
+        // 余额全额抵扣，直接销账
+        await billRepo.update(billId, { state: '已销账' });
+        await orderRepo.update(b.orderId, { status: '囤货中', paidAt: new Date() });
+        return { paidOff: true, usedBalance: useBal };
+      }
+
+      if (!screenshot) throw new BadRequestException(`需扫码支付 ¥${rest.toFixed(2)}，请上传付款截图`);
+      await billRepo.update(billId, { state: '已提交截图', screenshot });
+      return { paidOff: false, rest, usedBalance: useBal };
+    });
+  }
     if (rest <= 0) {
       // 余额全额抵扣，直接销账
       await this.billRepo.update(billId, { state: '已销账' });
@@ -370,16 +391,24 @@ ${new Date().toISOString()} ${auditor?.cn || '系统'} 砍单：${item.name} ×$
     return { paidOff: false, rest, usedBalance: useBal };
   }
 
-  /** 店主/管理员审核：通过销账 / 打回 */
+   /** 店主/管理员审核：通过销账 / 打回 */
   async auditBill(billId: number, pass: boolean, note: string, auditor: JwtUser) {
     const b = await this.billRepo.findOneByOrFail({ id: billId });
     if (b.state !== '已提交截图') throw new BadRequestException('状态不允许审核');
-    if (pass) {
-      await this.billRepo.update(billId, { state: '已销账', auditNote: note, opLog: `${b.opLog}\n${new Date().toISOString()} ${auditor.cn} 通过销账` });
-      await this.orderRepo.update(b.orderId, { status: '囤货中', paidAt: new Date() });
-    } else {
-      await this.billRepo.update(billId, { state: '待付款', auditNote: note, opLog: `${b.opLog}\n${new Date().toISOString()} ${auditor.cn} 打回：${note}` });
-    }
+
+    await this.dataSource.transaction(async manager => {
+      const billRepo = manager.getRepository(KidneyBill);
+      const orderRepo = manager.getRepository(Order);
+
+      if (pass) {
+        await billRepo.update(billId, { state: '已销账', auditNote: note, opLog: `${b.opLog}\n${new Date().toISOString()} ${auditor.cn} 通过销账` });
+        await orderRepo.update(b.orderId, { status: '囤货中', paidAt: new Date() });
+      } else {
+        await billRepo.update(billId, { state: '待付款', auditNote: note, opLog: `${b.opLog}\n${new Date().toISOString()} ${auditor.cn} 打回：${note}` });
+      }
+    });
+
+    // 事务成功后发通知
     const nRepo = this.billRepo.manager.getRepository(Notification);
     await nRepo.save(nRepo.create({
       userId: b.userId, title: pass ? '肾表审核通过' : '肾表审核被打回',
