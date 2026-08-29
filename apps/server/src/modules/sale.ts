@@ -80,7 +80,10 @@ export class SaleService {
       let hasBlind = false;
       for (const it of items) {
         if (it.qty <= 0) throw new BadRequestException('数量必须大于0');
-        const g = await saleRepo.findOneByOrFail({ id: it.goodId });
+        const g = await saleRepo.findOneOrFail({
+          where: { id: it.goodId },
+          lock: { mode: 'pessimistic_write' },
+        });
         if (g.stock < it.qty) throw new BadRequestException(`${g.name} 库存不足（剩 ${g.stock}）`);
         if (g.cat === '盲抽') hasBlind = true;
         g.stock -= it.qty;

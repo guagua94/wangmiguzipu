@@ -35,14 +35,14 @@ const dbConfig: any = isPostgres
       url: process.env.DATABASE_URL,
       ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
       entities,
-      synchronize: true,
+      synchronize: false, // 生产环境禁用自动同步，表结构变更请用 migration
     }
   : {
       type: 'sqljs',
       location: dbFile,
       autoSave: true,
       entities,
-      synchronize: true,
+      synchronize: true, // 本地开发保留自动同步
     };
 
 @Injectable()

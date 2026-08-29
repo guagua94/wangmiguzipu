@@ -31,6 +31,7 @@ export class User {
 
 /** 余额流水：append-only，只插入不更新 */
 @Entity('balance_flows')
+@Index(['userId'])
 export class BalanceFlow {
   @PrimaryGeneratedColumn() id: number;
   @Column() userId: number;
@@ -43,6 +44,7 @@ export class BalanceFlow {
 
 /** 站内消息 */
 @Entity('notifications')
+@Index(['userId'])
 export class Notification {
   @PrimaryGeneratedColumn() id: number;
   @Column() userId: number;
@@ -73,6 +75,7 @@ export class ShopConfig {
 
 /** 拼团系列 */
 @Entity('series')
+@Index(['status'])
 export class Series {
   @PrimaryGeneratedColumn() id: number;
   @Column() name: string;
@@ -114,6 +117,7 @@ export class Good {
 @Entity('orders')
 @Index(['userId'])
 @Index(['seriesId'])
+@Index(['userId', 'status'])
 export class Order {
   @PrimaryGeneratedColumn() id: number;
   @Column() userId: number;
@@ -173,6 +177,7 @@ export class SecondBill {
 
 /** 直售谷子 */
 @Entity('sale_goods')
+@Index(['stock'])
 export class SaleGood {
   @PrimaryGeneratedColumn() id: number;
   @Column({ default: '' }) no: string;                 // 唯一编号
@@ -191,6 +196,7 @@ export class SaleGood {
 
 /** 拍卖 */
 @Entity('auctions')
+@Index(['state'])
 export class Auction {
   @PrimaryGeneratedColumn() id: number;
   @Column() name: string;
@@ -218,6 +224,7 @@ export class Auction {
 /** 拍卖出价（只插入，当前价由最新一条推导） */
 @Entity('auction_bids')
 @Index(['auctionId'])
+@Index(['auctionId', 'userId'])
 export class AuctionBid {
   @PrimaryGeneratedColumn() id: number;
   @Column() auctionId: number;
@@ -242,6 +249,7 @@ export class AuctionDeposit {
 
 /** 转单 */
 @Entity('transfers')
+@Index(['seriesId'])
 export class Transfer {
   @PrimaryGeneratedColumn() id: number;
   @Column() seriesId: number;
@@ -260,6 +268,7 @@ export class Transfer {
 
 /** 清货排发 */
 @Entity('clearings')
+@Index(['userId'])
 export class Clearing {
   @PrimaryGeneratedColumn() id: number;
   @Column() userId: number;
@@ -281,6 +290,7 @@ export class Clearing {
 
 /** 售后单 */
 @Entity('after_sales')
+@Index(['userId'])
 export class AfterSale {
   @PrimaryGeneratedColumn() id: number;
   @Column() userId: number;
