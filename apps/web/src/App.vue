@@ -4061,8 +4061,14 @@ async function markSaleArrive(g) {
 }
 async function deleteSaleGood(g) {
   if (!confirm('确认删除「' + g.name + '」？')) return;
+  try {
     await api('POST', '/sale/delete', { id: g.id });
-  alert('已删除'); loadAdmin();
+    // 立即从本地列表移除，避免闪烁
+    saleGoods.value = saleGoods.value.filter(item => item.id !== g.id);
+    alert('已删除');
+  } catch (e) {
+    alert(e.message || '删除失败');
+  }
 }
 async function exportSaleCSV() {
   if (!saleGoods.value.length) return alert('没有可导出的直售');

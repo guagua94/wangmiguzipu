@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Req, Param, BadRequestException, Forbidden
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { Repository, In, DataSource } from 'typeorm';
 import { Request } from 'express';
-import { Series, Good, Order, OrderItem, KidneyBill, User, Notification, AdminLog } from '../entities';
+import { Series, Good, Order, OrderItem, KidneyBill, User, Notification, AdminLog, Transfer } from '../entities';
 import { JwtUser, checkRole } from '../common';
 
 export class GroupService {
@@ -554,29 +554,25 @@ ${new Date().toISOString()} ${auditor?.cn || '系统'} 砍单：${item.name} ×$
 
     await this.dataSource.transaction(async manager => {
       // 1. 删除转单记录（如果有）
-      const transferRepo = manager.getRepository('Transfer');
-      await transferRepo.createQueryBuilder().delete().where('seriesId = :id', { id }).execute();
+      await manager.getRepository(Transfer).delete({ seriesId: id });
 
       // 2. 删除订单明细
       const orderIds = orders.map(o => o.id);
       if (orderIds.length) {
-        await manager.createQueryBuilder().delete().from('order_items').where('orderId IN (:ids)', { ids: orderIds }).execute();
+        await manager.getRepository(OrderItem).delete({ orderId: In(orderIds) });
       }
 
       // 3. 删除肾表
-      await manager.createQueryBuilder().delete().from('kidney_bills').where('seriesId = :id', { id }).execute();
+      await manager.getRepository(KidneyBill).delete({ seriesId: id });
 
-      // 4. 删除二次收款记录
-      await manager.createQueryBuilder().delete().from('second_bills').where('seriesId = :id', { id }).execute();
+      // 4. 删除订单
+      await manager.getRepository(Order).delete({ seriesId: id });
 
-      // 5. 删除订单
-      await manager.createQueryBuilder().delete().from('orders').where('seriesId = :id', { id }).execute();
+      // 5. 删除谷子
+      await manager.getRepository(Good).delete({ seriesId: id });
 
-      // 6. 删除谷子
-      await manager.createQueryBuilder().delete().from('goods').where('seriesId = :id', { id }).execute();
-
-      // 7. 删除活动
-      await manager.createQueryBuilder().delete().from('series').where('id = :id', { id }).execute();
+      // 6. 删除活动
+      await manager.getRepository(Series).delete({ id });
 
       // 8. 写入审计日志
       const logRepo = manager.getRepository(AdminLog);
