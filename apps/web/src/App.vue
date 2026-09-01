@@ -479,7 +479,13 @@
           <thead><tr><th>拍品</th><th>起拍</th><th>当前价</th><th>一口价</th><th>状态</th><th>开拍</th><th>结束</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="a in auctions" :key="a.id">
-              <td>{{ a.emoji }} {{ a.name }}</td><td>¥{{ a.startPrice }}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <img v-if="a.img" :src="a.img" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid #eee" />
+                  <span v-else style="font-size:24px">{{ a.emoji }}</span>
+                  <span>{{ a.name }}</span>
+                </div>
+              </td><td>¥{{ a.startPrice }}</td>
               <td><b class="price">¥{{ a.curPrice }}</b></td><td>¥{{ a.buyNow }}</td>
               <td><span :class="['tag', a.state === '拍卖中' ? 'orange' : (a.state === '待开拍' ? 'gray' : 'green')]">{{ a.state }}</span></td>
               <td>{{ fmtTime(a.startTime) }}</td><td>{{ fmtTime(a.endTime) }}</td>
@@ -528,13 +534,12 @@
                 <span style="font-size:11px;color:#999">拍品展示用表情符号</span>
               </div>
               <div>
-                <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">开拍时间</label>
-                <input type="datetime-local" v-model="auctionEditForm.startTimeStr" style="width:100%" />
+                <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">图片</label>
+                <button class="btn mini" @click="pickAuctionEditImage" style="width:100%">📷 {{ auctionEditForm.img ? '重新上传' : '上传图片' }}</button>
               </div>
-              <div>
-                <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">结束时间</label>
-                <input type="datetime-local" v-model="auctionEditForm.endTimeStr" style="width:100%" />
-              </div>
+            </div>
+            <div v-if="auctionEditForm.img" style="margin:8px 0">
+              <img :src="auctionEditForm.img" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover;border:1px solid #eee" />
             </div>
             <p class="muted" style="font-size:12px;margin-bottom:12px">当前状态：<b>{{ auctionEditForm.state }}</b> · 开拍时间不可早于当前时间，结束时间必须晚于开拍时间</p>
             <div class="row" style="gap:8px">
@@ -583,6 +588,9 @@
                 <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">结束时间</label>
                 <input type="datetime-local" v-model="auctionRelistForm.endTimeStr" style="width:100%" />
               </div>
+            </div>
+            <div v-if="auctionRelistForm.img" style="margin:8px 0">
+              <img :src="auctionRelistForm.img" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover;border:1px solid #eee" />
             </div>
             <div class="row" style="gap:8px">
               <button class="btn gray" style="flex:1" @click="auctionRelistForm.show = false">✕ 取消</button>
@@ -1225,7 +1233,8 @@
           </div>
           <div v-for="a in auctions" :key="a.id" class="card" @click="openAuctionDetail(a)" style="cursor:pointer">
             <div class="row">
-              <div class="gimg" style="width:80px;height:80px;font-size:32px">{{ a.emoji }}</div>
+              <img v-if="a.img" :src="a.img" style="width:80px;height:80px;border-radius:8px;object-fit:cover;border:1px solid #eee;flex-shrink:0" />
+              <div v-else class="gimg" style="width:80px;height:80px;font-size:32px">{{ a.emoji }}</div>
               <div class="ginfo" style="margin-left:12px">
                 <b style="font-size:15px">{{ a.name }}</b>
                 <p class="muted" style="margin:2px 0">起拍 ¥{{ a.startPrice }} · 加价 ≥¥{{ a.stepPrice }} · 保证金 ¥{{ a.deposit }}</p>
@@ -1250,12 +1259,10 @@
             <button class="back-btn" @click="curAuction = null">← 返回</button>
             <h3>拍卖详情</h3>
           </div>
-            <div class="card">
-              <img v-if="curSeries.img" :src="curSeries.img" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:10px;cursor:pointer" @click="showScreenshot(curSeries.img)" />
-              <div v-else class="cover-lg" style="margin-bottom:10px">{{ curSeries.emoji }}</div>
-              <h2 style="font-size:18px;font-weight:700">{{ curSeries.name }}</h2>
-              <p class="muted">{{ curSeries.ip }} · {{ curSeries.deadline || '手动截团' }}</p>
-            </div>
+          <div class="card">
+            <img v-if="curAuction.img" :src="curAuction.img" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:10px;cursor:pointer" @click="showScreenshot(curAuction.img)" />
+            <div v-else class="cover-lg" style="margin-bottom:10px">{{ curAuction.emoji }}</div>
+            <h2 style="font-size:18px;font-weight:700">{{ curAuction.name }}</h2>
             <p class="muted" style="margin-top:10px;text-align:center">⏳ {{ fmtRemain(curAuction.endTime) }}</p>
           </div>
           <div class="card" v-if="auctionBids.length">
@@ -1577,8 +1584,14 @@
               <p class="muted">暂无拍卖订单</p>
             </div>
             <div v-for="a in myAuctionOrders" :key="a.id" class="card">
-              <div class="row between"><span class="muted">#{{ a.id }} · {{ a.emoji }} {{ a.name }}</span>
-                <span :class="['tag', a.state === '待付款' ? 'orange' : a.state === '已付款' || a.state === '囤货中' ? 'green' : 'gray']">{{ a.state }}<span v-if="a.isWinner"> · 中标</span></span></div>
+              <div class="row between">
+                <div class="row" style="align-items:center;gap:8px;flex:1;min-width:0">
+                  <img v-if="a.img" :src="a.img" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0" @click="showScreenshot(a.img)" />
+                  <span v-else style="font-size:20px;flex-shrink:0">{{ a.emoji }}</span>
+                  <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">#{{ a.id }} · {{ a.name }}</span>
+                </div>
+                <span :class="['tag', a.state === '待付款' ? 'orange' : a.state === '已付款' || a.state === '囤货中' ? 'green' : 'gray']">{{ a.state }}<span v-if="a.isWinner"> · 中标</span></span>
+              </div>
               <p class="muted" style="font-size:13px">当前价：¥{{ a.curPrice }} · 我的最高出价：¥{{ a.myMaxBid }}</p>
               <div v-if="a.state === '待付款' && a.isWinner && auctionCountdown[a.id]" class="row" style="gap:6px;margin-top:4px;align-items:center">
                 <span class="tag orange" style="font-size:12px">⏳ {{ auctionCountdown[a.id] }}</span>
@@ -3686,8 +3699,8 @@ const saleGoodEditForm = reactive({ show: false, id: 0, name: '', emoji: '', cat
 const newSeriesBtnRef = ref(null);
 
 /* ===== 拍卖编辑/重新上架表单 ===== */
-const auctionEditForm = reactive({ show: false, id: 0, name: '', startPrice: 0, stepPrice: 0, buyNow: 0, deposit: 0, emoji: '', startTimeStr: '', endTimeStr: '', state: '' });
-const auctionRelistForm = reactive({ show: false, id: 0, name: '', startPrice: 0, stepPrice: 0, buyNow: 0, deposit: 0, emoji: '', startTimeStr: '', endTimeStr: '' });
+const auctionEditForm = reactive({ show: false, id: 0, name: '', startPrice: 0, stepPrice: 0, buyNow: 0, deposit: 0, emoji: '', startTimeStr: '', endTimeStr: '', state: '', img: '' });
+const auctionRelistForm = reactive({ show: false, id: 0, name: '', startPrice: 0, stepPrice: 0, buyNow: 0, deposit: 0, emoji: '', img: '', state: '', startTimeStr: '', endTimeStr: '' });
 
 onMounted(() => {
   // Fix for newSeriesBtn not firing click events
@@ -3957,6 +3970,10 @@ async function pickAuctionImage() {
   try { newAuction.img = await pickAndUploadImage(); alert('图片上传成功'); }
   catch (e) { alert('图片上传失败：' + e.message); }
 }
+async function pickAuctionEditImage() {
+  try { auctionEditForm.img = await pickAndUploadImage(); alert('图片上传成功'); }
+  catch (e) { alert('图片上传失败：' + e.message); }
+}
 async function createAuction() {
   if (!newAuction.name) return alert('请填拍品名称');
   if (!newAuctionStart.value || !newAuctionEnd.value) return alert('请选择开拍时间');
@@ -3973,7 +3990,7 @@ async function createAuction() {
 function openAuctionEdit(a) {
   Object.assign(auctionEditForm, {
     show: true, id: a.id, name: a.name, startPrice: +a.startPrice, stepPrice: +a.stepPrice,
-    buyNow: +a.buyNow, deposit: +a.deposit, emoji: a.emoji, state: a.state,
+    buyNow: +a.buyNow, deposit: +a.deposit, emoji: a.emoji, state: a.state, img: a.img || '',
     startTimeStr: a.startTime ? new Date(+a.startTime).toISOString().slice(0, 16) : '',
     endTimeStr: a.endTime ? new Date(+a.endTime).toISOString().slice(0, 16) : '',
   });
@@ -3981,7 +3998,7 @@ function openAuctionEdit(a) {
 function openAuctionRelist(a) {
   Object.assign(auctionRelistForm, {
     show: true, id: a.id, name: a.name, startPrice: +a.startPrice, stepPrice: +a.stepPrice,
-    buyNow: +a.buyNow, deposit: +a.deposit, emoji: a.emoji, state: a.state,
+    buyNow: +a.buyNow, deposit: +a.deposit, emoji: a.emoji, img: a.img || '', state: a.state,
     startTimeStr: '', endTimeStr: '',
   });
 }
@@ -3998,7 +4015,7 @@ async function submitAuctionEdit() {
   if (f.buyNow > 0 && f.buyNow <= f.startPrice) return alert('一口价必须高于起拍价');
   await api('POST', '/auction/save', {
     id: f.id, name: f.name, startPrice: f.startPrice, stepPrice: f.stepPrice,
-    buyNow: f.buyNow, deposit: f.deposit, emoji: f.emoji,
+    buyNow: f.buyNow, deposit: f.deposit, emoji: f.emoji, img: f.img || '',
     startTime: st, endTime: et,
   });
   alert('修改已保存'); auctionEditForm.show = false; loadAdmin();
