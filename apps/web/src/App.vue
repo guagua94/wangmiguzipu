@@ -1187,7 +1187,7 @@
             <h3>谷子详情</h3>
           </div>
           <div class="card">
-            <img v-if="curSaleGood.img" :src="curSaleGood.img" style="width:100%;max-height:240px;object-fit:cover;border-radius:8px;margin-bottom:10px" />
+            <img v-if="curSaleGood.img" :src="curSaleGood.img" style="width:100%;max-height:240px;object-fit:cover;border-radius:8px;margin-bottom:10px;cursor:pointer" @click="showScreenshot(curSaleGood.img)" />
             <div v-else class="cover-lg" style="margin-bottom:10px">{{ curSaleGood.emoji }}</div>
             <h2 style="font-size:18px;font-weight:700">{{ curSaleGood.name }}</h2>
             <p class="muted" style="margin-top:4px">编号：{{ curSaleGood.no }} · IP：{{ curSaleGood.ip }} · 品类：{{ curSaleGood.cat }}</p>
