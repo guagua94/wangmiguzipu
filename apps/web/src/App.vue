@@ -474,6 +474,9 @@
               <button class="btn mini" @click="createAuction" style="flex:1">🔨 确认上架</button>
             </div>
           </div>
+          <div v-if="newAuction.img" style="margin:8px 0">
+            <img :src="newAuction.img" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover;border:1px solid #eee" />
+          </div>
         </div>
         <table class="styled-table">
           <thead><tr><th>拍品</th><th>起拍</th><th>当前价</th><th>一口价</th><th>状态</th><th>开拍</th><th>结束</th><th>操作</th></tr></thead>
