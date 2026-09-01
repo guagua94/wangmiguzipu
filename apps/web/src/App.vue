@@ -860,7 +860,9 @@
               <td>#{{ c.id }}</td><td>{{ c.cn }}</td>
               <td>{{ c.freightName }}+{{ c.packName }}{{ +c.overFee ? '+仓费¥' + c.overFee : '' }}</td>
               <td style="font-size:12px">
-                <div v-for="(it, idx) in parseClearItems(c.items)" :key="idx" style="white-space:nowrap">
+                <div v-for="(it, idx) in parseClearItems(c.items)" :key="idx" class="row" style="align-items:center;gap:4px;white-space:nowrap">
+                  <img v-if="it.img" :src="it.img" style="width:20px;height:20px;border-radius:4px;object-fit:cover;flex-shrink:0" @click="showScreenshot(it.img)" />
+                  <span v-else style="font-size:14px">{{ it.emoji || '🎁' }}</span>
                   {{ it.name }} ×{{ it.qty }} <span class="muted">¥{{ (it.qty * (+it.price || 0)).toFixed(2) }}</span>
                 </div>
                 <div class="muted" style="margin-top:2px">运费分摊 ¥{{ calcFreightShare(c) }}</div>
@@ -1925,8 +1927,12 @@
               <span class="tag orange">{{ c.state }}</span></div>
             <!-- 商品明细 -->
             <div v-if="parseClearItems(c.items).length" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">
-              <div v-for="(it, idx) in parseClearItems(c.items)" :key="idx" class="row between" style="font-size:13px;padding:2px 0">
-                <span>{{ it.name }}<span class="muted"> ×{{ it.qty }}</span></span>
+              <div v-for="(it, idx) in parseClearItems(c.items)" :key="idx" class="row between" style="font-size:13px;padding:2px 0;align-items:center">
+                <span class="row" style="align-items:center;gap:6px">
+                  <img v-if="it.img" :src="it.img" style="width:24px;height:24px;border-radius:4px;object-fit:cover;flex-shrink:0" @click="showScreenshot(it.img)" />
+                  <span v-else style="font-size:16px">{{ it.emoji || '🎁' }}</span>
+                  {{ it.name }}<span class="muted"> ×{{ it.qty }}</span>
+                </span>
                 <span class="muted">小计 ¥{{ (it.qty * (+it.price || 0)).toFixed(2) }}</span>
               </div>
               <div class="row between" style="font-size:12px;padding-top:4px;border-top:1px dashed var(--line);margin-top:4px">

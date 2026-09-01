@@ -96,10 +96,14 @@ export class ClearingService {
       overFee += overDays * 1 * unitFee;
     }
 
-    // 合并 items 快照（订单 items + 拍卖物品）
+    // 合并 items 快照（订单 items + 拍卖物品），含图片
     const allItems = [
-      ...items.map(i => ({ name: i.name, qty: i.qty, price: i.price })),
-      ...auctions.map(a => ({ name: a.name, qty: 1, price: a.curPrice })),
+      ...items.map(i => {
+        const gi = goodMap[i.goodId];
+        const si = saleGoodMap[i.goodId];
+        return { name: i.name, qty: i.qty, price: i.price, img: si?.img || gi?.img || '', emoji: si?.emoji || gi?.emoji || '🎁' };
+      }),
+      ...auctions.map(a => ({ name: a.name, qty: 1, price: a.curPrice, img: a.img || '', emoji: a.emoji || '🎁' })),
     ];
 
     const total = fr.amt + pk.amt + overFee;
