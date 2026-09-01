@@ -662,7 +662,13 @@
           <thead><tr><th>谷子</th><th>编号</th><th>IP</th><th>分类</th><th>价格</th><th>库存</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="g in adminFilteredSaleGoods" :key="g.id">
-              <td>{{ g.emoji }} {{ g.name }}</td><td>{{ g.no }}</td><td>{{ g.ip }}</td><td>{{ g.cat }}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <img v-if="g.img" :src="g.img" style="width:40px;height:40px;border-radius:6px;object-fit:cover;border:1px solid #eee" />
+                  <span v-else style="font-size:24px">{{ g.emoji }}</span>
+                  <span>{{ g.name }}</span>
+                </div>
+              </td><td>{{ g.no }}</td><td>{{ g.ip }}</td><td>{{ g.cat }}</td>
               <td>¥{{ g.price }}</td><td>{{ g.stock }}</td>
               <td><span :class="['tag', g.stock > 0 ? 'green' : 'gray']">{{ g.stock > 0 ? '在售' : '已售' }}</span></td>
               <td>
@@ -710,7 +716,14 @@
                 </select>
               </div>
             </div>
-            <div class="row" style="gap:8px">
+            <div style="display:flex;align-items:flex-end;gap:8px;margin-top:8px">
+              <button class="btn mini" @click="pickSaleGoodEditImage" style="flex:1">📷 {{ saleGoodEditForm.img ? '重新上传' : '上传图片' }}</button>
+              <div style="flex:1"></div>
+            </div>
+            <div v-if="saleGoodEditForm.img" style="margin:8px 0">
+              <img :src="saleGoodEditForm.img" style="max-width:200px;max-height:150px;border-radius:8px;object-fit:cover;border:1px solid #eee" />
+            </div>
+            <div class="row" style="gap:8px;margin-top:10px">
               <button class="btn gray" style="flex:1" @click="saleGoodEditForm.show = false">✕ 取消</button>
               <button class="btn" style="flex:1" @click="submitSaleGoodEdit">确认保存</button>
             </div>
@@ -1145,7 +1158,8 @@
             <button :class="{ on: saleCatFilter === '全新未拆单领' }" @click="saleCatFilter = '全新未拆单领'">全新未拆单领</button>
           </div>
           <div v-for="g in filteredSaleGoods" :key="g.id" class="card row" @click="openSaleDetail(g)" style="cursor:pointer">
-            <div class="gimg">{{ g.emoji }}</div>
+            <img v-if="g.img" :src="g.img" style="width:80px;height:80px;border-radius:8px;object-fit:cover;border:1px solid #eee;flex-shrink:0" />
+            <div v-else class="gimg">{{ g.emoji }}</div>
             <div class="ginfo">
               <div class="gname">{{ g.name }}</div>
               <p class="muted" style="margin:2px 0">{{ g.no }} · {{ g.ip }} · {{ g.cat }}</p>
@@ -1173,7 +1187,8 @@
             <h3>谷子详情</h3>
           </div>
           <div class="card">
-            <div class="cover-lg" style="margin-bottom:10px">{{ curSaleGood.emoji }}</div>
+            <img v-if="curSaleGood.img" :src="curSaleGood.img" style="width:100%;max-height:240px;object-fit:cover;border-radius:8px;margin-bottom:10px" />
+            <div v-else class="cover-lg" style="margin-bottom:10px">{{ curSaleGood.emoji }}</div>
             <h2 style="font-size:18px;font-weight:700">{{ curSaleGood.name }}</h2>
             <p class="muted" style="margin-top:4px">编号：{{ curSaleGood.no }} · IP：{{ curSaleGood.ip }} · 品类：{{ curSaleGood.cat }}</p>
             <div class="row between" style="margin-top:10px">
@@ -3670,7 +3685,7 @@ const gwUnpaidReminders = ref([]);
 
 /* 谷子编辑弹窗表单 */
 const goodEditForm = reactive({ show: false, id: 0, name: '', emoji: '', cat: '', price: 0, limit: 0, unitFee: 0.1 });
-const saleGoodEditForm = reactive({ show: false, id: 0, name: '', emoji: '', cat: '', price: 0, stock: 0, unitFee: 0.1 });
+const saleGoodEditForm = reactive({ show: false, id: 0, name: '', emoji: '', cat: '', price: 0, stock: 0, unitFee: 0.1, img: '' });
 const newSeriesBtnRef = ref(null);
 
 /* ===== 拍卖编辑/重新上架表单 ===== */
@@ -4024,6 +4039,10 @@ async function pickSaleGoodImage() {
   try { newSaleGood.img = await pickAndUploadImage(); alert('图片上传成功'); }
   catch (e) { alert('图片上传失败：' + e.message); }
 }
+async function pickSaleGoodEditImage() {
+  try { saleGoodEditForm.img = await pickAndUploadImage(); alert('图片上传成功'); }
+  catch (e) { alert('图片上传失败：' + e.message); }
+}
 async function addSaleGood() {
   if (!newSaleGood.name) return alert('请填写名称');
   if (!newSaleGood.price || +newSaleGood.price <= 0) return alert('价格必须大于0');
@@ -4040,14 +4059,14 @@ async function addSaleGood() {
   } catch (e) { alert('上架失败：' + e.message); }
 }
 function editSaleGood(g) {
-  Object.assign(saleGoodEditForm, { show: true, id: g.id, name: g.name, emoji: g.emoji || '🧸', cat: g.cat || '', price: +g.price || 0, stock: +g.stock || 0, unitFee: +g.unitFee || 0.1 });
+  Object.assign(saleGoodEditForm, { show: true, id: g.id, name: g.name, emoji: g.emoji || '🧸', cat: g.cat || '', price: +g.price || 0, stock: +g.stock || 0, unitFee: +g.unitFee || 0.1, img: g.img || '' });
 }
 async function submitSaleGoodEdit() {
   const f = saleGoodEditForm;
   if (!f.name) return alert('请填写名称');
   if (!f.price || +f.price <= 0) return alert('价格必须大于0');
   if (!f.stock || +f.stock < 0) return alert('库存不能为负数');
-  await api('POST', '/sale/save', { id: f.id, name: f.name, price: +f.price, stock: +f.stock, cat: f.cat, emoji: f.emoji, unitFee: +f.unitFee });
+  await api('POST', '/sale/save', { id: f.id, name: f.name, price: +f.price, stock: +f.stock, cat: f.cat, emoji: f.emoji, unitFee: +f.unitFee, img: f.img || '' });
   alert('修改已保存'); saleGoodEditForm.show = false; loadAdmin();
 }
 async function restockSaleGood(g) {
