@@ -2154,7 +2154,7 @@
         <h3 style="margin:0 0 12px">💳 付款（¥{{ payPanelData.total }}）</h3>
         <div class="pay-amount-box">
           <div class="pay-row"><span>应付总额</span><b>¥{{ payPanelData.total.toFixed(2) }}</b></div>
-          <div class="pay-row"><span>当前余额</span><span>¥{{ store.user.balance.toFixed(2) }}</span></div>
+          <div class="pay-row"><span>当前余额</span><span>¥{{ (+(store.user?.balance || 0)).toFixed(2) }}</span></div>
         </div>
         <div class="pay-deduct-box">
           <div class="pay-row">
@@ -2162,7 +2162,7 @@
             <div class="deduct-input-group">
               <button class="qty-btn" @click="payPanelData.useBalanceAmount = 0">不抵扣</button>
               <input class="deduct-input" v-model.number="payPanelData.useBalanceAmount" type="number" />
-              <button class="qty-btn" @click="payPanelData.useBalanceAmount = Math.min(store.user.balance, payPanelData.total)">全部抵扣</button>
+              <button class="qty-btn" @click="payPanelData.useBalanceAmount = Math.min(+(store.user?.balance || 0), payPanelData.total)">全部抵扣</button>
             </div>
           </div>
         </div>
@@ -2269,7 +2269,7 @@
         <h3 style="margin:0 0 12px">💰 缴纳保证金</h3>
         <div class="pay-amount-box">
           <div class="pay-row"><span>保证金</span><b class="price">¥{{ curAuction ? curAuction.deposit : 0 }}</b></div>
-          <div class="pay-row"><span>当前余额</span><span>¥{{ store.user.balance.toFixed(2) }}</span></div>
+          <div class="pay-row"><span>当前余额</span><span>¥{{ (+(store.user?.balance || 0)).toFixed(2) }}</span></div>
         </div>
         <div class="pay-deduct-box">
           <div class="pay-row">
@@ -2277,7 +2277,7 @@
             <div class="deduct-input-group">
               <button class="qty-btn" @click="depositUseBalance = 0">不抵扣</button>
               <input class="deduct-input" v-model.number="depositUseBalance" type="number" />
-              <button class="qty-btn" @click="depositUseBalance = Math.min(store.user.balance, curAuction.deposit)">全部抵扣</button>
+              <button class="qty-btn" @click="depositUseBalance = Math.min(+(store.user?.balance || 0), curAuction.deposit)">全部抵扣</button>
             </div>
           </div>
         </div>
@@ -2325,7 +2325,7 @@
           <div class="pay-row"><span>中标价</span><b>¥{{ curAuction ? curAuction.curPrice : 0 }}</b></div>
           <div class="pay-row"><span>保证金抵扣</span><span>-¥{{ auctionDepositDeduct.toFixed(2) }}</span></div>
           <div class="pay-row"><span>需付尾款</span><b class="price">¥{{ auctionRestAmount.toFixed(2) }}</b></div>
-          <div class="pay-row"><span>当前余额</span><span>¥{{ store.user.balance.toFixed(2) }}</span></div>
+          <div class="pay-row"><span>当前余额</span><span>¥{{ (+(store.user?.balance || 0)).toFixed(2) }}</span></div>
         </div>
         <div class="pay-deduct-box">
           <div class="pay-row">
@@ -2333,7 +2333,7 @@
             <div class="deduct-input-group">
               <button class="qty-btn" @click="auctionPayUseBalance = 0">不抵扣</button>
               <input class="deduct-input" v-model.number="auctionPayUseBalance" type="number" />
-              <button class="qty-btn" @click="auctionPayUseBalance = Math.min(store.user.balance, auctionRestAmount)">全部抵扣</button>
+              <button class="qty-btn" @click="auctionPayUseBalance = Math.min(+(store.user?.balance || 0), auctionRestAmount)">全部抵扣</button>
             </div>
           </div>
         </div>
@@ -2657,7 +2657,7 @@ const auctionPayScanAmount = computed(() => {
 });
 
 function openAuctionPayPanel() {
-  auctionPayUseBalance.value = Math.min(store.user.balance, auctionRestAmount.value);
+  auctionPayUseBalance.value = Math.min(+(store.user?.balance || 0), auctionRestAmount.value);
   auctionPayScreenshot.value = '';
   showAuctionPayPanel.value = true;
 }
@@ -3119,7 +3119,7 @@ const payPanelNeedScan = computed(() => payPanelData.useBalanceAmount < payPanel
 const payScanAmount = computed(() => Math.max(0, payPanelData.total - payPanelData.useBalanceAmount));
 function openPayPanel(total, callback) {
   payPanelData.total = total;
-  payPanelData.useBalanceAmount = Math.min(store.user.balance, total);
+  payPanelData.useBalanceAmount = Math.min(+(store.user?.balance || 0), total);
   payPanelData.screenshot = '';
   payPanelData.callback = callback;
   payPanelData.show = true;
@@ -3130,7 +3130,7 @@ async function pickPayScreenshot() {
 }
 async function confirmPay() {
   if (payPanelNeedScan.value && !payPanelData.screenshot) return;
-  const maxUse = Math.min(store.user.balance, payPanelData.total);
+  const maxUse = Math.min(+(store.user?.balance || 0), payPanelData.total);
   if (payPanelData.useBalanceAmount > maxUse) { alert('抵扣金额超过当前余额或应付总额'); return; }
   if (payPanelData.useBalanceAmount < 0) { alert('抵扣金额不能为负数'); return; }
   payPanelData.show = false;
