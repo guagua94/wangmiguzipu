@@ -1056,7 +1056,8 @@
             </div>
             <div v-for="b in myBills" :key="b.id" class="card my-bill-card">
               <div class="my-bill-header" @click="tab='me'; goMe('orders')">
-                <div class="cover-sm">{{ b.seriesEmoji || '🧩' }}</div>
+                <img v-if="b.seriesImg" :src="b.seriesImg" style="width:48px;height:48px;border-radius:10px;object-fit:cover;border:1px solid #eee;flex-shrink:0" />
+                <div v-else class="cover-sm">{{ b.seriesEmoji || '🧩' }}</div>
                 <div style="flex:1;margin-left:12px">
                   <b style="font-size:15px">{{ b.seriesName }}</b>
                   <div class="muted" style="font-size:12px;margin-top:2px">¥{{ b.total }} · {{ b.items?.length || 0 }}件</div>
@@ -1076,7 +1077,8 @@
               <h3>🧩 全部拼团</h3>
             </div>
             <div v-for="s in activeSeriesList" :key="s.id" class="card row" @click="openSeries(s.id)" style="cursor:pointer">
-              <div class="cover-sm">{{ s.emoji }}</div>
+              <img v-if="s.img" :src="s.img" style="width:60px;height:60px;border-radius:10px;object-fit:cover;border:1px solid #eee;flex-shrink:0" @click.stop="showScreenshot(s.img)" />
+              <div v-else class="cover-sm">{{ s.emoji }}</div>
               <div style="flex:1;margin-left:12px">
                 <b style="font-size:15px">{{ s.name }}</b>
                 <p class="muted" style="margin:2px 0">{{ s.ip }} · <span style="color:var(--brand)">{{ seriesCountdown[s.id] || s.deadline }}</span></p>
@@ -1097,7 +1099,8 @@
             <h3>{{ curSeries.name }}</h3>
           </div>
           <div class="card">
-            <div class="cover-lg">{{ curSeries.emoji }}</div>
+            <img v-if="curSeries.img" :src="curSeries.img" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:10px;cursor:pointer" @click="showScreenshot(curSeries.img)" />
+            <div v-else class="cover-lg">{{ curSeries.emoji }}</div>
             <div class="row between" style="margin-top:10px">
               <b style="font-size:16px">{{ curSeries.name }}</b>
               <span :class="['tag', curSeries.status === '进行中' ? 'pink' : 'green']">{{ curSeries.status }}</span>
@@ -1247,17 +1250,11 @@
             <button class="back-btn" @click="curAuction = null">← 返回</button>
             <h3>拍卖详情</h3>
           </div>
-          <div class="card">
-            <div class="cover-lg" style="margin-bottom:10px">{{ curAuction.emoji }}</div>
-            <h2 style="font-size:18px;font-weight:700">{{ curAuction.name }}</h2>
-            <p class="muted" v-if="curAuction.desc" style="margin-top:4px">{{ curAuction.desc }}</p>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
-              <div style="background:var(--bg);border-radius:var(--r-md);padding:10px 12px"><p class="muted" style="margin:0">起拍价</p><b style="font-size:16px">¥{{ curAuction.startPrice }}</b></div>
-              <div style="background:var(--brand-bg);border-radius:var(--r-md);padding:10px 12px"><p class="muted" style="margin:0;color:var(--brand)">当前价</p><b class="price" style="font-size:18px">¥{{ curAuction.curPrice }}</b></div>
-              <div style="background:var(--bg);border-radius:var(--r-md);padding:10px 12px"><p class="muted" style="margin:0">加价幅度</p><b style="font-size:15px">¥{{ curAuction.stepPrice }}</b></div>
-              <div style="background:var(--bg);border-radius:var(--r-md);padding:10px 12px"><p class="muted" style="margin:0">一口价</p><b style="font-size:15px">¥{{ curAuction.buyNow }}</b></div>
-              <div style="background:var(--bg);border-radius:var(--r-md);padding:10px 12px"><p class="muted" style="margin:0">保证金</p><b style="font-size:15px">¥{{ curAuction.deposit }}</b></div>
-              <div style="background:var(--bg);border-radius:var(--r-md);padding:10px 12px"><p class="muted" style="margin:0">状态</p><span :class="['tag', curAuction.state === '拍卖中' ? 'orange' : 'gray']" style="margin-top:2px">{{ curAuction.state }}</span></div>
+            <div class="card">
+              <img v-if="curSeries.img" :src="curSeries.img" style="width:100%;max-height:200px;object-fit:cover;border-radius:8px;margin-bottom:10px;cursor:pointer" @click="showScreenshot(curSeries.img)" />
+              <div v-else class="cover-lg" style="margin-bottom:10px">{{ curSeries.emoji }}</div>
+              <h2 style="font-size:18px;font-weight:700">{{ curSeries.name }}</h2>
+              <p class="muted">{{ curSeries.ip }} · {{ curSeries.deadline || '手动截团' }}</p>
             </div>
             <p class="muted" style="margin-top:10px;text-align:center">⏳ {{ fmtRemain(curAuction.endTime) }}</p>
           </div>

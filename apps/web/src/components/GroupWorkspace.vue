@@ -24,7 +24,8 @@
       <div v-for="m in matrix" :key="m.good.id" class="gw-matrix-row">
         <div class="gw-good-info">
           <div class="gw-good-name">
-            <span class="gw-good-emoji">{{ m.good.emoji || '🧸' }}</span>
+            <img v-if="m.good.img" :src="m.good.img" style="width:32px;height:32px;border-radius:6px;object-fit:cover;border:1px solid #eee" />
+            <span v-else class="gw-good-emoji">{{ m.good.emoji || '🧸' }}</span>
             <b>{{ m.good.name }}</b>
             <span class="tag gray mini-tag">{{ m.good.cat || '未分类' }}</span>
           </div>
