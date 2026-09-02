@@ -31,18 +31,96 @@ async function bootstrap() {
     setInterval(() => auctionService.tickStates(), 60_000);
   }, 10_000);
   const ds = app.get(DataSource);
-  try { await ds.query(`ALTER TABLE series ADD COLUMN mode TEXT DEFAULT 'traditional'`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE series ADD COLUMN deadlineAt TIMESTAMP`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE order_items ADD COLUMN status TEXT DEFAULT ''`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE goods ADD COLUMN unitFee DECIMAL(10,2) DEFAULT '0.1'`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE sale_goods ADD COLUMN unitFee DECIMAL(10,2) DEFAULT '0.1'`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN groupFreeDays INTEGER DEFAULT 30`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN groupOverFeeOn INTEGER DEFAULT 1`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN groupOverDays INTEGER DEFAULT 90`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN saleFreeDays INTEGER DEFAULT 7`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN saleOverFeeOn INTEGER DEFAULT 1`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN saleOverDays INTEGER DEFAULT 30`); } catch(e) {}
-  try { await ds.query(`ALTER TABLE auction_deposits ADD COLUMN screenshot TEXT DEFAULT ''`); } catch(e) {}
+
+  // === Schema 升级：创建新表和添加新列（如果缺失）===
+  // 1. 创建 merged_shipments 表
+  try {
+    await ds.query(`CREATE TABLE IF NOT EXISTS merged_shipments (
+      id SERIAL PRIMARY KEY,
+      "mergeGroupId" VARCHAR(32) NOT NULL,
+      "ownerId" INT NOT NULL,
+      "sourceOrderIds" TEXT,
+      freight DECIMAL(10,2) DEFAULT '0.00',
+      "packFee" DECIMAL(10,2) DEFAULT '0.00',
+      total DECIMAL(10,2) DEFAULT '0.00',
+      "addressSnapshot" TEXT DEFAULT '',
+      status VARCHAR(32) DEFAULT '待发货',
+      "trackingNo" VARCHAR(128) DEFAULT '',
+      "packImg" TEXT DEFAULT '',
+      "shippedAt" TIMESTAMP,
+      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await ds.query(`CREATE INDEX IF NOT EXISTS idx_merge_owner ON merged_shipments("ownerId")`);
+    await ds.query(`CREATE INDEX IF NOT EXISTS idx_merge_group ON merged_shipments("mergeGroupId")`);
+    console.log('[schema] merged_shipments 表已就绪');
+  } catch(e: any) { console.log('[schema] merged_shipments 跳过:', e.message); }
+
+  // 2. orders 表添加合单相关列
+  const orderCols = [
+    { name: 'mergeGroupId', type: 'VARCHAR(32)', default: "''" },
+    { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
+    { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
+    { name: 'parentId', type: 'INT', default: '0' },
+    { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
+    { name: 'mergeId', type: 'INT', default: '0' },
+  ];
+  for (const col of orderCols) {
+    try { await ds.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
+    catch(e: any) { /* 列已存在 */ }
+  }
+
+  // 3. kidney_bills 表添加合单相关列
+  const kbCols = [
+    { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
+    { name: 'mergeId', type: 'INT', default: '0' },
+    { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
+    { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
+  ];
+  for (const col of kbCols) {
+    try { await ds.query(`ALTER TABLE kidney_bills ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
+    catch(e: any) { /* 列已存在 */ }
+  }
+
+  // 4. sale_orders 表添加合单相关列
+  const soCols = [
+    { name: 'mergeGroupId', type: 'VARCHAR(32)', default: "''" },
+    { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
+    { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
+    { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
+    { name: 'mergeId', type: 'INT', default: '0' },
+  ];
+  for (const col of soCols) {
+    try { await ds.query(`ALTER TABLE sale_orders ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
+    catch(e: any) { /* 列已存在 */ }
+  }
+
+  // 5. auctions 表添加合单相关列
+  const aucCols = [
+    { name: 'mergeGroupId', type: 'VARCHAR(32)', default: "''" },
+    { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
+    { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
+    { name: 'mergeId', type: 'INT', default: '0' },
+  ];
+  for (const col of aucCols) {
+    try { await ds.query(`ALTER TABLE auctions ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
+    catch(e: any) { /* 列已存在 */ }
+  }
+
+  console.log('[schema] 数据库结构升级完成');
+
+  // === 旧数据兼容：确保 shop_config 表有基础数据 ===
+  try { await ds.query(`ALTER TABLE series ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'traditional'`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE series ADD COLUMN IF NOT EXISTS "deadlineAt" TIMESTAMP`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS status TEXT DEFAULT ''`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE goods ADD COLUMN IF NOT EXISTS "unitFee" DECIMAL(10,2) DEFAULT '0.1'`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE sale_goods ADD COLUMN IF NOT EXISTS "unitFee" DECIMAL(10,2) DEFAULT '0.1'`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "groupFreeDays" INTEGER DEFAULT 30`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "groupOverFeeOn" INTEGER DEFAULT 1`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "groupOverDays" INTEGER DEFAULT 90`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "saleFreeDays" INTEGER DEFAULT 7`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "saleOverFeeOn" INTEGER DEFAULT 1`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "saleOverDays" INTEGER DEFAULT 30`); } catch(e) {}
+  try { await ds.query(`ALTER TABLE auction_deposits ADD COLUMN IF NOT EXISTS screenshot TEXT DEFAULT ''`); } catch(e) {}
   try { await ds.query(`ALTER TABLE auction_deposits ADD COLUMN auditNote TEXT DEFAULT ''`); } catch(e) {}
   try { await ds.query(`ALTER TABLE shop_config ADD COLUMN unitFees TEXT DEFAULT '[{"name":"拍立得 / 透卡 / 明信片","fee":0.1,"note":"纸片类小件"},{"name":"吧唧 / 立牌 / 色纸 / 文件夹","fee":0.2,"note":"亚克力/铁皮/纸质中件"},{"name":"手办 / 其他","fee":0.5,"note":"大件/其他"}]'`); } catch(e) {}
 
