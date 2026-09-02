@@ -24,6 +24,7 @@ import { NotifyController, NotifyService } from './modules/notify';
 import { SecondController, SecondService } from './modules/second';
 import { AddressController, AddressService, AddressModuleRef } from './modules/address';
 import { UploadController } from './modules/upload';
+import { OrderController, OrderService, OrderModuleRef } from './modules/order';
 
 const isPostgres = !!process.env.DATABASE_URL;
 const dbFile = path.join(__dirname, '..', 'wangmi.db');
@@ -76,17 +77,18 @@ export class AutoJietuanTask {
     TypeOrmModule.forRoot(dbConfig),
     TypeOrmModule.forFeature(entities),
     AddressModuleRef,
+    OrderModuleRef,
   ],
   controllers: [
     AuthController, UserController, ShopController, GroupController,
     BalanceController, SaleController, AuctionController, TransferController,
     ClearingController, AfterSaleController, NotifyController, SecondController,
-    AddressController, UploadController,
+    AddressController, UploadController, OrderController,
   ],
   providers: [
     AuthService, UserService, ShopService, GroupService, BalanceService,
     SaleService, AuctionService, TransferService, ClearingService,
-    AfterSaleService, NotifyService, SecondService, AddressService,
+    AfterSaleService, NotifyService, SecondService, AddressService, OrderService,
     AutoJietuanTask,
   ],
 })

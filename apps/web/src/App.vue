@@ -150,6 +150,88 @@
         />
       </template>
 
+      <!-- 订单管理 -->
+      <template v-else-if="adminTab === '订单管理'">
+        <h2>订单管理</h2>
+        <!-- 筛选标签 -->
+        <div class="catbar" style="margin-bottom:12px">
+          <button :class="{ on: orderFilter === 'all' }" @click="orderFilter = 'all'">全部</button>
+          <button :class="{ on: orderFilter === '待付款' }" @click="orderFilter = '待付款'">待付款</button>
+          <button :class="{ on: orderFilter === '待审核' }" @click="orderFilter = '待审核'">待审核</button>
+          <button :class="{ on: orderFilter === '已销账' }" @click="orderFilter = '已销账'">已销账</button>
+          <button :class="{ on: orderFilter === '囤货中' }" @click="orderFilter = '囤货中'">囤货中</button>
+          <button :class="{ on: orderFilter === '已发货' }" @click="orderFilter = '已发货'">已发货</button>
+          <button :class="{ on: orderFilter === '已完成' }" @click="orderFilter = '已完成'">已完成</button>
+          <button :class="{ on: orderFilter === '已取消' }" @click="orderFilter = '已取消'">已取消</button>
+        </div>
+        <!-- 来源筛选 -->
+        <div class="catbar" style="margin-bottom:12px">
+          <button :class="{ on: orderSource === '' }" @click="orderSource = ''">全部来源</button>
+          <button :class="{ on: orderSource === 'group' }" @click="orderSource = 'group'">拼团</button>
+          <button :class="{ on: orderSource === 'sale' }" @click="orderSource = 'sale'">直售</button>
+          <button :class="{ on: orderSource === 'auction' }" @click="orderSource = 'auction'">拍卖</button>
+        </div>
+        <!-- 搜索 -->
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <input v-model="orderSearchQ" placeholder="搜索单号或团员CN" class="input" style="flex:1" @keyup.enter="loadOrders" />
+          <button class="btn" @click="loadOrders">🔍 搜索</button>
+          <button class="btn gray" @click="orderSearchQ = ''; loadOrders()">重置</button>
+        </div>
+        <!-- 订单表格 -->
+        <div v-if="ordersLoading" class="card" style="text-align:center;padding:40px">
+          <p class="muted">加载中...</p>
+        </div>
+        <div v-else-if="orders.length === 0" class="card" style="text-align:center;padding:40px">
+          <div style="font-size:48px;opacity:.3;margin-bottom:8px">📦</div>
+          <p class="muted">暂无订单</p>
+        </div>
+        <div v-else class="card" style="padding:0;overflow-x:auto">
+          <table class="styled-table order-table">
+            <thead>
+              <tr>
+                <th>单号</th>
+                <th>团员</th>
+                <th>来源</th>
+                <th>内容</th>
+                <th style="text-align:right">金额</th>
+                <th>状态</th>
+                <th style="text-align:center;width:200px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="o in orders" :key="o.id">
+                <td>{{ o.orderNo || o.id }}</td>
+                <td>{{ o.cn }}</td>
+                <td>
+                  <span class="tag" :class="{ pink: o.source === 'group', blue: o.source === 'sale', orange: o.source === 'auction' }">{{ o.sourceLabel }}</span>
+                </td>
+                <td>{{ o.content }}</td>
+                <td style="text-align:right" class="price">¥{{ o.amount.toFixed(2) }}</td>
+                <td>
+                  <span class="tag" :class="orderStatusClass(o.status)">{{ o.statusLabel || o.status }}</span>
+                </td>
+                <td style="text-align:center">
+                  <button class="btn mini" @click="openOrderDetail(o)">详情</button>
+                  <button class="btn mini" style="margin-left:4px" @click="openSplitModal(o)">拆单</button>
+                  <button class="btn mini" style="margin-left:4px" @click="toggleMergeSelect(o)" :class="{on: mergeSelectedIds.includes(o.id)}">{{ mergeSelectedIds.includes(o.id) ? '取消' : '合单' }}</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- 合单浮条 -->
+          <div v-if="mergeSelectedIds.length >= 2" style="position:sticky;bottom:0;background:#fff;border-top:1px solid #eee;padding:12px 16px;display:flex;justify-content:space-between;align-items:center">
+            <span>已选 {{ mergeSelectedIds.length }} 个订单</span>
+            <button class="btn" @click="confirmMerge">确认合单</button>
+          </div>
+          <!-- 分页 -->
+          <div v-if="orderPagination.total > orderPagination.size" style="display:flex;justify-content:center;gap:8px;padding:12px">
+            <button class="btn gray mini" :disabled="orderPagination.page <= 1" @click="orderPagination.page--; loadOrders()">上一页</button>
+            <span style="font-size:13px;color:#666">第 {{ orderPagination.page }} 页 / 共 {{ Math.ceil(orderPagination.total / orderPagination.size) }} 页</span>
+            <button class="btn gray mini" :disabled="orderPagination.page >= Math.ceil(orderPagination.total / orderPagination.size)" @click="orderPagination.page++; loadOrders()">下一页</button>
+          </div>
+        </div>
+      </template>
+
       <!-- 付款审核 -->
       <template v-else-if="adminTab === '付款审核'">
         <h2>付款审核</h2>
@@ -2383,11 +2465,49 @@
     <div v-if="showScreenshotModal" class="screenshot-modal" @click.self="showScreenshotModal = false">
       <img :src="screenshotUrl" />
     </div>
+
+    <!-- 订单详情弹窗 -->
+    <div v-if="showOrderDetailModal" class="modal" @click.self="showOrderDetailModal = false">
+      <div class="modal-card" style="max-width:480px">
+        <h3>订单详情</h3>
+        <div v-if="orderDetail" class="detail-grid">
+          <div><span class="label">单号</span><span>{{ orderDetail.orderNo || orderDetail.id }}</span></div>
+          <div><span class="label">团员</span><span>{{ orderDetail.cn }}</span></div>
+          <div><span class="label">来源</span><span class="tag" :class="{ pink: orderDetail.source === 'group', blue: orderDetail.source === 'sale', orange: orderDetail.source === 'auction' }">{{ orderDetail.sourceLabel }}</span></div>
+          <div><span class="label">内容</span><span>{{ orderDetail.content }}</span></div>
+          <div><span class="label">金额</span><span class="price">¥{{ orderDetail.amount?.toFixed(2) }}</span></div>
+          <div><span class="label">状态</span><span class="tag" :class="orderStatusClass(orderDetail.status)">{{ orderDetail.statusLabel || orderDetail.status }}</span></div>
+          <div v-if="orderDetail.screenshot"><span class="label">截图</span><span class="todo-screenshot-link" @click="showScreenshot(orderDetail.screenshot)">📷 查看</span></div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px">
+          <button class="btn gray" @click="showOrderDetailModal = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 拆单弹窗 -->
+    <div v-if="showSplitModal" class="modal" @click.self="showSplitModal = false">
+      <div class="modal-card" style="max-width:480px">
+        <h3>拆单 - {{ splitOrder?.orderNo || splitOrder?.id }}</h3>
+        <p class="muted" style="margin-bottom:12px">将订单拆分为多个子订单</p>
+        <div v-for="(item, idx) in splitItems" :key="idx" style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
+          <input v-model="item.name" placeholder="商品名称" class="input" style="flex:1" />
+          <input v-model.number="item.qty" type="number" placeholder="数量" class="input" style="width:60px" />
+          <input v-model.number="item.price" type="number" placeholder="单价" class="input" style="width:80px" />
+          <button class="btn gray mini" @click="removeSplitItem(idx)" v-if="splitItems.length > 1">删除</button>
+        </div>
+        <button class="btn gray mini" @click="addSplitItem" style="margin-bottom:16px">+ 添加商品</button>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn gray" @click="showSplitModal = false">取消</button>
+          <button class="btn" @click="submitSplit">确认拆单</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { store, setAuth, logout, api } from './main.js';
 import { pickAndUploadImage, parseCSV, toCSV, downloadCSV, pickCSVFile } from './ui.js';
 import Timeline from './components/Timeline.vue';
@@ -3495,9 +3615,23 @@ async function deactivateAccount() {
 }
 
 /* ===== 后台 ===== */
-const adminMenus = ['数据看板', '预警中心', '付款审核', '拼团管理', '直售管理', '拍卖管理', '会员管理', '售后管理', '二次收肾', '清货/转单', '提现管理', '店铺设置', '我的账号'];
+const adminMenus = ['数据看板', '订单管理', '预警中心', '付款审核', '拼团管理', '直售管理', '拍卖管理', '会员管理', '售后管理', '二次收肾', '清货/转单', '提现管理', '店铺设置', '我的账号'];
 const adminTab = ref('数据看板');
 const paymentAuditTab = ref('all'); // 'all' | 'group' | 'sale' | 'clear' | 'second' | 'deposit' | 'processed'
+
+// 订单管理
+const orders = ref([]);
+const orderFilter = ref('all');
+const orderSource = ref('');
+const orderSearchQ = ref('');
+const ordersLoading = ref(false);
+const orderPagination = reactive({ page: 1, size: 20, total: 0 });
+const mergeSelectedIds = ref([]);
+const showOrderDetailModal = ref(false);
+const orderDetail = ref(null);
+const showSplitModal = ref(false);
+const splitOrder = ref(null);
+const splitItems = ref([]);
 
 /* ===== 付款审核 - 批量勾选 ===== */
 const paySelectedIds = reactive(new Set());
@@ -3539,6 +3673,93 @@ async function batchAuditPayments(pass) {
   paySelectedIds.clear();
   alert(`批量审核完成：成功 ${ok} 笔${fail ? '，失败 ' + fail + ' 笔' : ''}`);
   loadAdmin();
+}
+
+/* ===== 订单管理 ===== */
+async function loadOrders() {
+  ordersLoading.value = true;
+  try {
+    const params = new URLSearchParams();
+    if (orderFilter.value !== 'all') params.append('filter', orderFilter.value);
+    if (orderSource.value) params.append('source', orderSource.value);
+    if (orderSearchQ.value) params.append('q', orderSearchQ.value);
+    params.append('page', String(orderPagination.page));
+    params.append('size', String(orderPagination.size));
+    const r = await api('GET', '/orders?' + params.toString());
+    orders.value = r.data || [];
+    orderPagination.total = r.total || 0;
+  } catch (e) {
+    console.error('加载订单失败', e);
+    alert('加载订单失败: ' + e.message);
+  } finally {
+    ordersLoading.value = false;
+  }
+}
+
+function orderStatusClass(status) {
+  const map = {
+    '待付款': 'orange',
+    '待审核': 'blue',
+    '已销账': 'green',
+    '囤货中': 'pink',
+    '已发货': 'purple',
+    '已完成': 'gray',
+    '已取消': 'gray',
+  };
+  return map[status] || 'gray';
+}
+
+function openOrderDetail(o) {
+  orderDetail.value = o;
+  showOrderDetailModal.value = true;
+}
+
+function openSplitModal(o) {
+  splitOrder.value = o;
+  splitItems.value = [{ name: '', qty: 1, price: 0 }];
+  showSplitModal.value = true;
+}
+
+function toggleMergeSelect(o) {
+  const idx = mergeSelectedIds.value.indexOf(o.id);
+  if (idx >= 0) {
+    mergeSelectedIds.value.splice(idx, 1);
+  } else {
+    mergeSelectedIds.value.push(o.id);
+  }
+}
+
+async function confirmMerge() {
+  if (mergeSelectedIds.value.length < 2) return;
+  try {
+    await api('POST', '/orders/merge', { orderIds: mergeSelectedIds.value });
+    alert('合单成功');
+    mergeSelectedIds.value = [];
+    loadOrders();
+  } catch (e) {
+    alert('合单失败: ' + e.message);
+  }
+}
+
+async function submitSplit() {
+  if (!splitOrder.value) return;
+  try {
+    const [type, id] = splitOrder.value.id.split('-');
+    await api('POST', `/orders/split/${type}/${id}`, { items: splitItems.value });
+    alert('拆单成功');
+    showSplitModal.value = false;
+    loadOrders();
+  } catch (e) {
+    alert('拆单失败: ' + e.message);
+  }
+}
+
+function addSplitItem() {
+  splitItems.value.push({ name: '', qty: 1, price: 0 });
+}
+
+function removeSplitItem(idx) {
+  splitItems.value.splice(idx, 1);
 }
 
 /* ===== 数据看板 - 待办收件箱 ===== */

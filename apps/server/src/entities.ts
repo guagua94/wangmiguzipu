@@ -129,6 +129,11 @@ export class Order {
   @Column({ default: '' }) screenshot: string;           // 付款截图（直售订单）
   @Column({ type: 'timestamp', nullable: true }) paidAt: Date | null;     // 付款入囤时间
   @Column({ type: 'timestamp', nullable: true }) cancelRequestAt: Date | null; // 直售取消申请时间
+  @Column({ default: '' }) orderNo: string;              // 统一订单号，如 O001
+  @Column({ default: 0 }) parentId: number;              // 拆单：父订单ID
+  @Column({ default: 0 }) mergeId: number;               // 合单：合并目标订单ID
+  @Column({ default: false }) isSplit: boolean;            // 是否被拆分
+  @Column({ default: false }) isMerged: boolean;           // 是否被合并
   @CreateDateColumn() createdAt: Date;
 }
 
@@ -159,6 +164,11 @@ export class KidneyBill {
   @Column({ default: '' }) screenshot: string;
   @Column({ default: '' }) auditNote: string;
   @Column({ default: '', type: 'text' }) opLog: string;
+  @Column({ default: '' }) orderNo: string;              // 统一订单号，如 O001
+  @Column({ default: 0 }) parentId: number;              // 拆单：父订单ID
+  @Column({ default: 0 }) mergeId: number;               // 合单：合并目标订单ID
+  @Column({ default: false }) isSplit: boolean;            // 是否被拆分
+  @Column({ default: false }) isMerged: boolean;           // 是否被合并
   @CreateDateColumn() createdAt: Date;
 }
 
@@ -218,6 +228,11 @@ export class Auction {
   @Column({ default: 0 }) bidCount: number;
   @Column({ type: 'bigint', default: 0 }) wonAt: number;  // 进入"待付款"状态的时间戳(ms)，用于超时计算
   @Column({ type: 'timestamp', nullable: true }) stockSince: Date | null;  // 付款入囤时间
+  @Column({ default: '' }) orderNo: string;              // 统一订单号，如 O001
+  @Column({ default: 0 }) parentId: number;              // 拆单：父订单ID
+  @Column({ default: 0 }) mergeId: number;               // 合单：合并目标订单ID
+  @Column({ default: false }) isSplit: boolean;            // 是否被拆分
+  @Column({ default: false }) isMerged: boolean;           // 是否被合并
   @CreateDateColumn() createdAt: Date;
 }
 
