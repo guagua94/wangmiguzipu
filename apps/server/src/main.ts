@@ -1,7 +1,9 @@
 import 'reflect-metadata';
 import * as dns from 'dns';
-// Railway 容器不支持 IPv6，强制 DNS 优先返回 IPv4
-dns.setDefaultResultOrder('ipv4first');
+// Railway 容器可能使用旧版 Node.js，安全调用 IPv4 优先
+if (typeof (dns as any).setDefaultResultOrder === 'function') {
+  (dns as any).setDefaultResultOrder('ipv4first');
+}
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { DataSource } from 'typeorm';
@@ -35,8 +37,10 @@ async function bootstrap() {
   console.log(`[wangmi-server] http://0.0.0.0:${port}/api`);
   const auctionService = app.get(AuctionService);
   setTimeout(() => {
-    auctionService.tickStates();
-    setInterval(() => auctionService.tickStates(), 60_000);
+    auctionService.tickStates().catch((e: Error) => console.error('[auction] tickStates error:', e.message));
+    setInterval(() => {
+      auctionService.tickStates().catch((e: Error) => console.error('[auction] tickStates error:', e.message));
+    }, 60_000);
   }, 10_000);
   const ds = app.get(DataSource);
 
@@ -61,8 +65,8 @@ async function bootstrap() {
     await ds.query(`CREATE INDEX IF NOT EXISTS idx_merge_owner ON merged_shipments("ownerId")`);
     await ds.query(`CREATE INDEX IF NOT EXISTS idx_merge_group ON merged_shipments("mergeGroupId")`);
     console.log('[schema] merged_shipments 表已就绪');
-  } catch(e: any) { console.log('[schema] merged_shipments 跳过:', e.message); }
-
+  } catch(e) { console.log('[schema] merged_shipments 跳过:', (e as Error).message); }
+  
   // 2. orders 表添加合单相关列
   const orderCols = [
     { name: 'mergeGroupId', type: 'VARCHAR(32)', default: "''" },
@@ -74,7 +78,7 @@ async function bootstrap() {
   ];
   for (const col of orderCols) {
     try { await ds.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
-    catch(e: any) { /* 列已存在 */ }
+    catch(e) { /* 列已存在 */ }
   }
 
   // 3. kidney_bills 表添加合单相关列
@@ -86,7 +90,7 @@ async function bootstrap() {
   ];
   for (const col of kbCols) {
     try { await ds.query(`ALTER TABLE kidney_bills ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
-    catch(e: any) { /* 列已存在 */ }
+    catch(e) { /* 列已存在 */ }
   }
 
   // 4. sale_orders 表添加合单相关列
@@ -99,7 +103,7 @@ async function bootstrap() {
   ];
   for (const col of soCols) {
     try { await ds.query(`ALTER TABLE sale_orders ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
-    catch(e: any) { /* 列已存在 */ }
+    catch(e) { /* 列已存在 */ }
   }
 
   // 5. auctions 表添加合单相关列
@@ -111,7 +115,7 @@ async function bootstrap() {
   ];
   for (const col of aucCols) {
     try { await ds.query(`ALTER TABLE auctions ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
-    catch(e: any) { /* 列已存在 */ }
+    catch(e) { /* 列已存在 */ }
   }
 
   console.log('[schema] 数据库结构升级完成');
