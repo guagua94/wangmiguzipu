@@ -16,7 +16,15 @@ async function bootstrap() {
     process.env.JWT_SECRET = 'wangmi-secret-key-2024-change-in-production';
     console.warn('[WARN] JWT_SECRET not set, using default. Please set it in Railway dashboard for security.');
   }
-  const app = await NestFactory.create<INestApplication>(AppModule, { cors: true });
+  const app = await NestFactory.create<INestApplication>(AppModule, {
+    cors: {
+      origin: true,
+      credentials: true,
+      allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
+      methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+      preflightContinue: false,
+    }
+  });
   app.setGlobalPrefix('api');
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: false }));
   const uploadsDir = path.join(__dirname, '..', 'uploads');
