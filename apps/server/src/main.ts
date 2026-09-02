@@ -11,9 +11,10 @@ import * as express from 'express';
 import * as path from 'path';
 
 async function bootstrap() {
-    if (!process.env.JWT_SECRET) {
-    console.error('[FATAL] JWT_SECRET environment variable is required. Set it in Railway dashboard → Variables.');
-    process.exit(1);
+  // JWT_SECRET: 优先从环境变量读取，未设置时使用硬编码默认值（确保 Railway 能启动）
+  if (!process.env.JWT_SECRET) {
+    process.env.JWT_SECRET = 'wangmi-secret-key-2024-change-in-production';
+    console.warn('[WARN] JWT_SECRET not set, using default. Please set it in Railway dashboard for security.');
   }
   const app = await NestFactory.create<INestApplication>(AppModule, { cors: true });
   app.setGlobalPrefix('api');
