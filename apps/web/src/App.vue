@@ -32,12 +32,13 @@
       <!-- 数据看板 -->
       <template v-if="adminTab === '数据看板'">
         <h2>数据看板</h2>
-        <div class="stats">
-          <div class="s"><b>{{ seriesList.length }}</b><span>拼团系列</span></div>
-          <div class="s"><b>{{ adminTodos.totalCount }}</b><span>待审核待办</span></div>
-          <div class="s"><b>{{ goodsCount }}</b><span>在售谷子</span></div>
-          <div class="s"><b>{{ auctions.length }}</b><span>拍卖场次</span></div>
-          <div class="s"><b>{{ pendingWithdraws.length }}</b><span>待处理提现</span></div>
+        <div class="stats" style="grid-template-columns:repeat(6,1fr)">
+          <div class="s" style="--num-color:#FF5B7F"><b>{{ ongoingGroupCount }}</b><span>进行中拼团</span></div>
+          <div class="s" style="--num-color:#FF9500"><b>{{ adminTodos.totalCount }}</b><span>待审核截图</span></div>
+          <div class="s" style="--num-color:#34C759"><b>{{ adminTodos.today.length }}</b><span>今日新增订单</span></div>
+          <div class="s amount" style="--num-color:#FF5B7F"><b>¥{{ pendingConfirmAmount }}</b><span>待确认收货</span></div>
+          <div class="s" style="--num-color:#FF3B30"><b>{{ pendingAfter.length }}</b><span>待处理售后</span></div>
+          <div class="s" style="--num-color:#007AFF"><b>{{ pendingTransferCount }}</b><span>待审核转单</span></div>
         </div>
 
         <!-- 流式待办收件箱 -->
@@ -3743,6 +3744,14 @@ const myWithdraws = ref([]);
 const pendingBills = computed(() => allBills.value.filter(b => b.state === '已提交截图'));
 const pendingAfter = computed(() => afters.value.filter(a => a.state === '待审核'));
 const pendingWithdraws = computed(() => withdrawList.value.filter(w => w.state === '待处理'));
+const ongoingGroupCount = computed(() => seriesList.value.filter(s => s.status === '进行中').length);
+const pendingConfirmAmount = computed(() => {
+  const list = clears.value.filter(c => c.state === '已发货');
+  const total = list.reduce((sum, c) => sum + (c.total || 0), 0);
+  return total.toFixed(2);
+});
+const pendingTransferCount = computed(() => allTransfers.value.filter(t => t.state === '待管理员审核').length);
+
 const allProcessedOrders = computed(() => {
   if (paymentAuditTab.value !== 'processed') return [];
   const orders = [];
