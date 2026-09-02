@@ -3,7 +3,7 @@
     <!-- 卡片头部 -->
     <div class="gsc-header">
       <div class="gsc-title-area">
-        <img v-if="card.img" :src="card.img" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid #eee" />
+        <img v-if="card.img" :src="card.img" style="width:44px;height:44px;border-radius:10px;object-fit:cover;border:1px solid #eee;cursor:pointer" @click.stop="$emit('img-click', card.img)" />
         <span v-else class="gsc-emoji">{{ card.emoji || '🧩' }}</span>
         <div class="gsc-title-text">
           <b class="gsc-name">{{ card.name }}</b>
@@ -67,7 +67,7 @@ const props = defineProps({
   deletable: { type: Boolean, default: false },
 });
 
-defineEmits(['expand', 'delete']);
+defineEmits(['expand', 'delete', 'img-click']);
 
 const statusClass = computed(() => {
   if (props.card.status === '进行中') return 'pink';

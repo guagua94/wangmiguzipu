@@ -283,6 +283,7 @@
               :deletable="store.user?.role === 'owner'"
               @expand="expandedCardId = expandedCardId === card.id ? null : card.id"
               @delete="handleDeleteSeries(card)"
+              @img-click="showScreenshot"
             />
           </div>
         </template>
