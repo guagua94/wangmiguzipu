@@ -281,7 +281,7 @@
               :card="card"
               :expanded="expandedCardId === card.id"
               :deletable="store.user?.role === 'owner'"
-              @expand="expandedCardId = expandedCardId === card.id ? null : card.id"
+             @expand="openGroupWorkspace(card.id)"
               @delete="handleDeleteSeries(card)"
               @img-click="showScreenshot"
             />
