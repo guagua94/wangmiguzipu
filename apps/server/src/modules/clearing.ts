@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Req, BadRequestException } from '@nestjs/c
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { Repository, In, LessThan } from 'typeorm';
 import { Request } from 'express';
-import { Clearing, User, ShopConfig, Order, OrderItem, Notification, Good, SaleGood, Address, Auction } from '../entities';
+import { Clearing, User, ShopConfig, Order, OrderItem, Notification, Good, SaleGood, Address, Auction, MergedShipment } from '../entities';
 import { JwtUser, checkRole } from '../common';
 import { ShopService } from './shop';
 import { BalanceService } from './balance';
@@ -17,6 +17,7 @@ export class ClearingService {
     @InjectRepository(SaleGood) private saleRepo: Repository<SaleGood>,
     @InjectRepository(Address) private addrRepo: Repository<Address>,
     @InjectRepository(Auction) private auctionRepo: Repository<Auction>,
+    @InjectRepository(MergedShipment) private mergeRepo: Repository<MergedShipment>,
     private shop: ShopService,
     private balance: BalanceService,
   ) {}
@@ -214,6 +215,57 @@ export class ClearingService {
     await this.userRepo.manager.getRepository(Notification).save(
       this.userRepo.manager.getRepository(Notification).create({ userId: uid, title, body }));
   }
+
+  /** 团员查看自己的合并发货单 */
+  async myMerges(uid: number) {
+    const merges = await this.mergeRepo.find({ where: { ownerId: uid }, order: { id: 'desc' } });
+    return merges;
+  }
+
+  /** 团员提交合并发货单的付款截图 */
+  async submitMerge(uid: number, id: number, screenshot: string, useBalanceAmount: number) {
+    const m = await this.mergeRepo.findOneByOrFail({ id });
+    if (m.ownerId !== uid) throw new BadRequestException('无权操作');
+    if (m.status !== '待发货') throw new BadRequestException('该合并发货单状态不支持付款');
+    const total = +m.total;
+    let useBal = Math.max(0, Math.min(useBalanceAmount || 0, total));
+    let rest = total;
+    if (useBal > 0) {
+      await this.balance.debit(uid, useBal, '合单发货抵扣', `合并发货 ${m.mergeGroupId} 余额抵扣 ¥${useBal.toFixed(2)}`, `MG${id}`);
+      rest = total - useBal;
+      await this.mergeRepo.update(id, { total: rest.toFixed(2) });
+    }
+    if (rest <= 0) {
+      await this.mergeRepo.update(id, { status: '待发货', addressSnapshot: m.addressSnapshot });
+      return { paidOff: true, usedBalance: useBal };
+    }
+    if (!screenshot) throw new BadRequestException(`需扫码支付 ¥${rest.toFixed(2)}，请上传付款截图`);
+    return { paidOff: false, rest, usedBalance: useBal };
+  }
+
+  /** 店主发货合并发货单 */
+  async shipMerge(id: number, trackingNo: string, packImg: string) {
+    await this.mergeRepo.update(id, { status: '已发货', trackingNo, packImg, shippedAt: new Date() });
+    const m = await this.mergeRepo.findOneByOrFail({ id });
+    await this.notify(m.ownerId, '合并发货已发货', `合并发货单 ${m.mergeGroupId} 物流单号：${trackingNo}`);
+    return { ok: true };
+  }
+
+  /** 团员确认收货合并发货单 */
+  async confirmMergeReceive(id: number, uid: number) {
+    const m = await this.mergeRepo.findOneByOrFail({ id });
+    if (m.ownerId !== uid || m.status !== '已发货') throw new BadRequestException('状态错误');
+    await this.mergeRepo.update(id, { status: '已完成' });
+    await this.notify(uid, '合并发货已收货', `合并发货单 ${m.mergeGroupId} 已确认收货`);
+    return { ok: true };
+  }
+
+  /** 店主查看所有合并发货单 */
+  async allMerges() {
+    const merges = await this.mergeRepo.find({ order: { id: 'desc' } });
+    const us = merges.length ? await this.userRepo.find({ where: { id: In(merges.map(m => m.ownerId)) } }) : [];
+    return merges.map(m => ({ ...m, cn: us.find(u => u.id === m.ownerId)?.cn || '' }));
+  }
 }
 
 @Controller('clearing')
@@ -273,6 +325,36 @@ export class ClearingController {
     checkRole(req.user, ['owner', 'admin']);
     return this.svc.autoConfirmReceive();
   }
+
+  @Get('merges/mine')
+  async myMerges(@Req() req: Request & { user?: JwtUser }) {
+    checkRole(req.user, ['banned-allowed']);
+    return this.svc.myMerges(req.user!.id);
+  }
+
+  @Get('merges/all')
+  async allMerges(@Req() req: Request & { user?: JwtUser }) {
+    checkRole(req.user, ['owner', 'admin']);
+    return this.svc.allMerges();
+  }
+
+  @Post('merges/submit')
+  async submitMerge(@Req() req: Request & { user?: JwtUser }, @Body() b: { id: number; screenshot?: string; useBalanceAmount: number }) {
+    checkRole(req.user, []);
+    return this.svc.submitMerge(req.user!.id, b.id, b.screenshot || '', b.useBalanceAmount);
+  }
+
+  @Post('merges/ship')
+  async shipMerge(@Req() req: Request & { user?: JwtUser }, @Body() b: { id: number; trackingNo: string; packImg?: string }) {
+    checkRole(req.user, ['owner', 'admin']);
+    return this.svc.shipMerge(b.id, b.trackingNo, b.packImg || '');
+  }
+
+  @Post('merges/confirm-receive')
+  async confirmMergeReceive(@Req() req: Request & { user?: JwtUser }, @Body() b: { id: number }) {
+    checkRole(req.user, ['banned-allowed']);
+    return this.svc.confirmMergeReceive(b.id, req.user!.id);
+  }
 }
 
-export const ClearingModuleRef = TypeOrmModule.forFeature([Clearing, User, Order, OrderItem, Good, SaleGood, Address, Auction]);
+export const ClearingModuleRef = TypeOrmModule.forFeature([Clearing, User, Order, OrderItem, Good, SaleGood, Address, Auction, MergedShipment]);

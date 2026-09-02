@@ -974,6 +974,24 @@
             </tr>
           </tbody>
         </table>
+        <h2>合并发货单</h2>
+        <div v-if="!mergeShipments.length" class="card" style="text-align:center;padding:30px 16px;margin:8px 12px"><div style="font-size:36px;opacity:.3;margin-bottom:8px">📦</div><p class="muted">暂无合并发货单</p></div>
+        <table v-if="mergeShipments.length" class="styled-table">
+          <thead><tr><th>合单号</th><th>团员</th><th>来源订单</th><th>合计</th><th>状态</th><th>物流单号</th><th>操作</th></tr></thead>
+          <tbody>
+            <tr v-for="m in mergeShipments" :key="m.id">
+              <td>{{ m.mergeGroupId }}</td>
+              <td>{{ m.cn }}</td>
+              <td style="font-size:12px">{{ m.sourceOrderIds?.join('、') }}</td>
+              <td class="price">¥{{ m.total }}</td>
+              <td><span class="tag" :class="{ orange: m.status === '待发货', green: m.status === '已发货', gray: m.status === '已完成' }">{{ m.status }}</span></td>
+              <td style="font-size:12px">{{ m.trackingNo || '-' }}</td>
+              <td>
+                <button v-if="m.status === '待发货'" class="btn mini" @click="shipMergeShipment(m)">上传物流单号并发货</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
         <h2>转单审核</h2>
         <table class="styled-table">
           <thead><tr><th>单号</th><th>谷子</th><th>转出→接收</th><th>方式</th><th>状态</th><th>操作</th></tr></thead>
@@ -2044,9 +2062,23 @@
               </div>
             </div>
           </div>
-        </template>
 
-        <!-- 余额详情（含提现） -->
+          <!-- 合并发货单 -->
+          <h3 class="sec">📦 我的合并发货单</h3>
+          <div v-if="!myMergeShipments.length" class="card" style="text-align:center;padding:30px 16px"><div style="font-size:36px;opacity:.3;margin-bottom:8px">📦</div><p class="muted">暂无合并发货单</p></div>
+          <div v-for="m in myMergeShipments" :key="m.id" class="card">
+            <div class="row between"><span class="muted">{{ m.mergeGroupId }} · {{ m.sourceOrderIds?.length }}个订单合并</span>
+              <span class="tag" :class="{ orange: m.status === '待发货', green: m.status === '已发货', gray: m.status === '已完成' }">{{ m.status }}</span></div>
+            <div v-if="m.trackingNo" style="margin-top:6px;font-size:12px">
+              <span class="muted">物流单号：</span><b>{{ m.trackingNo }}</b>
+            </div>
+            <div class="row between" style="margin-top:8px"><b class="price">¥{{ m.total }}</b>
+              <div class="row" style="gap:6px">
+                <button v-if="m.status === '已发货'" class="btn mini" @click="confirmMergeReceive(m)">确认收货</button>
+              </div>
+            </div>
+          </div>
+        </template>
         <template v-if="meSubTab === 'wallet'">
           <div class="subpage-header">
             <button class="back-btn" @click="backMeSub">← 返回</button>
@@ -2489,17 +2521,68 @@
     <div v-if="showSplitModal" class="modal" @click.self="showSplitModal = false">
       <div class="modal-card" style="max-width:480px">
         <h3>拆单 - {{ splitOrder?.orderNo || splitOrder?.id }}</h3>
-        <p class="muted" style="margin-bottom:12px">将订单拆分为多个子订单</p>
-        <div v-for="(item, idx) in splitItems" :key="idx" style="display:flex;gap:8px;margin-bottom:8px;align-items:center">
-          <input v-model="item.name" placeholder="商品名称" class="input" style="flex:1" />
-          <input v-model.number="item.qty" type="number" placeholder="数量" class="input" style="width:60px" />
-          <input v-model.number="item.price" type="number" placeholder="单价" class="input" style="width:80px" />
-          <button class="btn gray mini" @click="removeSplitItem(idx)" v-if="splitItems.length > 1">删除</button>
+        <p class="muted" style="margin-bottom:12px">选择要拆出的商品和数量</p>
+        <table class="styled-table" style="margin-bottom:12px">
+          <thead>
+            <tr>
+              <th>商品名称</th>
+              <th style="text-align:center">当前数量</th>
+              <th style="text-align:center">拆出数量</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(item, idx) in splitItems" :key="idx">
+              <td>{{ item.name }}</td>
+              <td style="text-align:center">{{ item.qty }}</td>
+              <td style="text-align:center">
+                <input v-model.number="item.splitQty" type="number" min="0" :max="item.qty" class="input" style="width:80px;text-align:center" />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        <div style="display:flex;gap:8px;justify-content:space-between;margin-bottom:16px">
+          <span class="muted">拆出总额: <b class="price">¥{{ splitItems.reduce((sum, i) => sum + (i.splitQty || 0) * i.price, 0).toFixed(2) }}</b></span>
         </div>
-        <button class="btn gray mini" @click="addSplitItem" style="margin-bottom:16px">+ 添加商品</button>
         <div style="display:flex;gap:8px;justify-content:flex-end">
           <button class="btn gray" @click="showSplitModal = false">取消</button>
           <button class="btn" @click="submitSplit">确认拆单</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 合单预览弹窗 -->
+    <div v-if="mergePreview" class="modal" @click.self="mergePreview = null">
+      <div class="modal-card" style="max-width:520px">
+        <h3>合单预览</h3>
+        <p class="muted" style="margin-bottom:12px">团员: <b>{{ mergePreview.cn }}</b> · 合并 {{ mergePreview.count }} 个订单</p>
+        <table class="styled-table" style="margin-bottom:12px">
+          <thead>
+            <tr>
+              <th>单号</th>
+              <th>来源</th>
+              <th>内容</th>
+              <th style="text-align:right">金额</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="item in mergePreview.items" :key="item.id">
+              <td>{{ item.orderNo }}</td>
+              <td>{{ item.source }}</td>
+              <td>{{ item.content }}</td>
+              <td style="text-align:right" class="price">¥{{ item.amount.toFixed(2) }}</td>
+            </tr>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" style="text-align:right"><b>合计</b></td>
+              <td style="text-align:right" class="price"><b>¥{{ mergePreview.total.toFixed(2) }}</b></td>
+            </tr>
+          </tfoot>
+        </table>
+        <p class="muted" style="margin-bottom:12px;font-size:13px">合单后将创建一个合并发货单，原订单金额不变，仅合并发货。拍卖订单仅合并发货，不重算金额。</p>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button class="btn gray" @click="mergePreview = null">取消</button>
+          <button class="btn" @click="doConfirmMerge">确认合单</button>
         </div>
       </div>
     </div>
@@ -2817,6 +2900,7 @@ const quickTransfer = ref({ show: false, order: null, selected: new Set(), toCn:
 const myBuys = ref([]);
 const myAuctionOrders = ref([]);
 const myClears = ref([]);
+const myMergeShipments = ref([]);
 const myTransfers = ref([]);
 const myAfters = ref([]);
 
@@ -3027,6 +3111,7 @@ async function goMe(k) {
     await loadBuys();
     shopCfg.value = await api('GET', '/shop/config');
     myClears.value = await api('GET', '/clearing/mine').catch(() => []);
+    myMergeShipments.value = await api('GET', '/clearing/merges/mine').catch(() => []);
     if (!clearFreight.value && freightOpts.value[0]) clearFreight.value = freightOpts.value[0].name;
     if (!clearPack.value && packOpts.value[0]) clearPack.value = packOpts.value[0].name;
     myAddresses.value = await api('GET', '/address/list').catch(() => []);
@@ -3308,6 +3393,14 @@ async function confirmClearing(c) {
     await api('POST', '/clearing/confirm-receive', { id: c.id });
     alert('已确认收货');
     myClears.value = await api('GET', '/clearing/mine').catch(() => []);
+  } catch (e) { alert(e.message); }
+}
+async function confirmMergeReceive(m) {
+  if (!confirm('确认已收到合并发货的货物？')) return;
+  try {
+    await api('POST', '/clearing/merges/confirm-receive', { id: m.id });
+    alert('已确认收货');
+    myMergeShipments.value = await api('GET', '/clearing/merges/mine').catch(() => []);
   } catch (e) { alert(e.message); }
 }
 async function paySecond(b) {
@@ -3714,9 +3807,29 @@ function openOrderDetail(o) {
   showOrderDetailModal.value = true;
 }
 
-function openSplitModal(o) {
+async function openSplitModal(o) {
   splitOrder.value = o;
-  splitItems.value = [{ name: '', qty: 1, price: 0 }];
+  if (o.source === 'sale') {
+    // 拉取直售订单商品明细
+    try {
+      const r = await api('GET', `/orders/items/sale/${o.rawId}`);
+      splitItems.value = (r.items || []).map(item => ({
+        itemId: item.id,
+        name: item.name,
+        price: +item.price,
+        qty: item.qty,
+        splitQty: 0, // 拆出数量
+      }));
+    } catch (e) {
+      console.error('获取商品明细失败', e);
+      alert('获取商品明细失败');
+      return;
+    }
+  } else {
+    // 其他类型暂不支持拆单
+    alert('该订单类型暂不支持拆单');
+    return;
+  }
   showSplitModal.value = true;
 }
 
@@ -3725,15 +3838,45 @@ function toggleMergeSelect(o) {
   if (idx >= 0) {
     mergeSelectedIds.value.splice(idx, 1);
   } else {
+    // 校验：合单必须同一团员
+    if (mergeSelectedIds.value.length > 0) {
+      const first = orders.value.find(x => x.id === mergeSelectedIds.value[0]);
+      if (first && first.cn !== o.cn) {
+        alert(`合单必须选择同一团员的订单（已选: ${first?.cn}，当前: ${o.cn}）`);
+        return;
+      }
+    }
     mergeSelectedIds.value.push(o.id);
   }
 }
 
+const mergePreview = ref(null);
+
 async function confirmMerge() {
   if (mergeSelectedIds.value.length < 2) return;
+  const selectedOrders = orders.value.filter(o => mergeSelectedIds.value.includes(o.id));
+  // 前端预校验
+  const owners = [...new Set(selectedOrders.map(o => o.cn))];
+  if (owners.length > 1) {
+    alert(`合单必须同一团员，当前包含: ${owners.join('、')}`);
+    return;
+  }
+  // 弹出预览
+  const totalAmount = selectedOrders.reduce((s, o) => s + o.amount, 0);
+  mergePreview.value = {
+    cn: owners[0],
+    count: selectedOrders.length,
+    total: totalAmount,
+    items: selectedOrders.map(o => ({ id: o.id, orderNo: o.orderNo || o.id, source: o.sourceLabel, amount: o.amount, content: o.content }))
+  };
+}
+
+async function doConfirmMerge() {
+  if (!mergePreview.value) return;
   try {
     await api('POST', '/orders/merge', { orderIds: mergeSelectedIds.value });
-    alert('合单成功');
+    alert('合单成功，已创建合并发货单');
+    mergePreview.value = null;
     mergeSelectedIds.value = [];
     loadOrders();
   } catch (e) {
@@ -3745,21 +3888,20 @@ async function submitSplit() {
   if (!splitOrder.value) return;
   try {
     const [type, id] = splitOrder.value.id.split('-');
-    await api('POST', `/orders/split/${type}/${id}`, { items: splitItems.value });
+    const items = splitItems.value
+      .filter(item => item.splitQty > 0 && item.splitQty <= item.qty)
+      .map(item => ({ itemId: item.itemId, qty: item.splitQty }));
+    if (!items.length) {
+      alert('请至少选择一项商品并填写拆出数量');
+      return;
+    }
+    await api('POST', `/orders/split/${type}/${id}`, { items });
     alert('拆单成功');
     showSplitModal.value = false;
     loadOrders();
   } catch (e) {
     alert('拆单失败: ' + e.message);
   }
-}
-
-function addSplitItem() {
-  splitItems.value.push({ name: '', qty: 1, price: 0 });
-}
-
-function removeSplitItem(idx) {
-  splitItems.value.splice(idx, 1);
 }
 
 /* ===== 数据看板 - 待办收件箱 ===== */
@@ -4386,6 +4528,7 @@ const secondBills = ref([]);
 const clears = ref([]);
 const selectedClearings = ref([]);
 const allTransfers = ref([]);
+const mergeShipments = ref([]);
 const pendingSales = ref([]);
 const allSales = ref([]);
 const allDeposits = ref([]);
@@ -4397,6 +4540,7 @@ const cfgEd = reactive({ groupFreeDays: 30, groupOverFeeOn: true, groupOverDays:
 async function loadAdminExt() {
   secondBills.value = await api('GET', '/second/all').catch(() => []);
   clears.value = await api('GET', '/clearing/all').catch(() => []);
+  mergeShipments.value = await api('GET', '/clearing/merges/all').catch(() => []);
   allTransfers.value = await api('GET', '/transfer/all').catch(() => []);
   pendingSales.value = await api('GET', '/sale/pending-audit').catch(() => []);
   allSales.value = await api('GET', '/sale/all').catch(() => []);
@@ -4426,6 +4570,10 @@ async function auditClear(c, pass) {
 async function shipClear(c) {
   const no = prompt('物流单号'); if (!no) return;
   await api('POST', '/clearing/ship', { id: c.id, trackingNo: no }); alert('已发货'); loadAdminExt();
+}
+async function shipMergeShipment(m) {
+  const no = prompt('物流单号'); if (!no) return;
+  await api('POST', '/clearing/merges/ship', { id: m.id, trackingNo: no }); alert('合并发货单已发货'); loadAdminExt();
 }
 function toggleSelectAllClearings() {
   const shippable = clears.value.filter(c => c.state === '审核通过').map(c => c.id);

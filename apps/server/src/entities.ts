@@ -355,8 +355,28 @@ export class AdminLog {
   @CreateDateColumn() createdAt: Date;
 }
 
+/** 合并发货单（合单深度整合） */
+@Entity('merged_shipments')
+@Index(['ownerId'])
+@Index(['mergeGroupId'])
+export class MergedShipment {
+  @PrimaryGeneratedColumn() id: number;
+  @Column() mergeGroupId: string;                         // 合单组号 MG001
+  @Column() ownerId: number;                             // 团员ID
+  @Column({ type: 'simple-json' }) sourceOrderIds: string[]; // ["kidney-1","sale-3","auction-5"]
+  @Column({ type: 'decimal', precision: 10, scale: 2 }) freight: string; // 邮费
+  @Column({ type: 'decimal', precision: 10, scale: 2 }) packFee: string; // 打包费
+  @Column({ type: 'decimal', precision: 10, scale: 2 }) total: string;   // 合计金额（仅展示）
+  @Column({ default: '' }) addressSnapshot: string;     // 收货地址快照(json)
+  @Column({ default: '待发货' }) status: '待发货' | '已发货' | '已完成';
+  @Column({ default: '' }) trackingNo: string;          // 物流单号
+  @Column({ default: '' }) packImg: string;               // 打包照片
+  @Column({ type: 'timestamp', nullable: true }) shippedAt: Date | null;
+  @CreateDateColumn() createdAt: Date;
+}
+
 export const entities = [
   User, BalanceFlow, Notification, ShopConfig, Series, Good, Order, OrderItem,
   KidneyBill, SecondBill, SaleGood, Auction, AuctionBid, AuctionDeposit,
-  Transfer, Clearing, AfterSale, Withdrawal, Address, AdminLog,
+  Transfer, Clearing, AfterSale, Withdrawal, Address, AdminLog, MergedShipment,
 ];

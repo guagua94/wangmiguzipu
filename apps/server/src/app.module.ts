@@ -6,7 +6,7 @@ import * as bcrypt from 'bcryptjs';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Request, Response, NextFunction } from 'express';
-import { entities, Series } from './entities';
+import { entities, Series, MergedShipment } from './entities';
 import { JwtUser } from './common';
 
 // 按文件聚合的模块
