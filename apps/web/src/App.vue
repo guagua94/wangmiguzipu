@@ -41,9 +41,9 @@
           <div class="s" style="--num-color:#007AFF"><b>{{ pendingTransferCount }}</b><span>待审核转单</span></div>
         </div>
 
-        <!-- 流式待办收件箱 -->
-        <h3 style="display:flex;align-items:center;justify-content:space-between">
-          <span>待办收件箱 <span style="color:var(--brand)">{{ adminTodos.totalCount }}</span></span>
+        <!-- 待办事项表格 -->
+        <h3 style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span>待办事项 <span style="color:var(--brand)">{{ adminTodos.totalCount }}</span></span>
           <div style="display:flex;gap:8px">
             <button class="btn gray mini" @click="todoFilter = 'all'" :class="{on: todoFilter === 'all'}">全部</button>
             <button class="btn gray mini" @click="todoFilter = 'bill'" :class="{on: todoFilter === 'bill'}">肾表</button>
@@ -60,62 +60,65 @@
           <p class="muted">暂无待办事项</p>
         </div>
 
-        <!-- 即将超时 -->
-        <div v-if="adminTodos.urgent.length" class="todo-section">
-          <div class="todo-section-header urgent">
-            <span class="dot" style="background:#FF3B30"></span>
-            即将超时（{{ adminTodos.urgent.length }}）
-          </div>
-          <AdminTimelineNode
-            v-for="item in adminTodos.urgent"
-            :key="item.id"
-            :item="item"
-            :selected="todoSelected.has(item.id)"
-            @click="showTodoDetail(item)"
-            @toggle-select="toggleTodoSelect"
-            @action="handleTodoAction"
-            @preview-screenshot="showScreenshot"
-          />
-        </div>
-
-        <!-- 今日新 -->
-        <div v-if="adminTodos.today.length" class="todo-section">
-          <div class="todo-section-header today">
-            <span class="dot" style="background:#FF9500"></span>
-            今日新提交（{{ adminTodos.today.length }}）
-          </div>
-          <AdminTimelineNode
-            v-for="item in adminTodos.today"
-            :key="item.id"
-            :item="item"
-            :selected="todoSelected.has(item.id)"
-            @click="showTodoDetail(item)"
-            @toggle-select="toggleTodoSelect"
-            @action="handleTodoAction"
-            @preview-screenshot="showScreenshot"
-          />
-        </div>
-
-        <!-- 普通待办 -->
-        <div v-if="adminTodos.normal.length" class="todo-section">
-          <div class="todo-section-header">
-            <span class="dot" style="background:#8E8E93"></span>
-            普通待办（{{ adminTodos.normal.length }}）
-          </div>
-          <AdminTimelineNode
-            v-for="item in adminTodos.normal"
-            :key="item.id"
-            :item="item"
-            :selected="todoSelected.has(item.id)"
-            @click="showTodoDetail(item)"
-            @toggle-select="toggleTodoSelect"
-            @action="handleTodoAction"
-            @preview-screenshot="showScreenshot"
-          />
+        <div v-else class="card" style="padding:0;overflow-x:auto">
+          <table class="styled-table todo-table">
+            <thead>
+              <tr>
+                <th>类型</th>
+                <th>单号</th>
+                <th>团员</th>
+                <th>内容</th>
+                <th style="text-align:right">金额</th>
+                <th>状态</th>
+                <th style="text-align:center;width:140px">操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="item in allTodosFlat" :key="item.id" :class="{ urgent: item.urgencyLevel === 3, today: item.urgencyLevel === 2 }">
+                <td>
+                  <span class="tag" :class="{
+                    orange: item.type === 'bill' || item.type === 'sale',
+                    pink: item.type === 'cancel',
+                    red: item.type === 'after',
+                    blue: item.type === 'deposit',
+                    green: item.type === 'withdraw'
+                  }">{{ item.typeLabel }}</span>
+                </td>
+                <td>{{ item.id.split('-')[1] }}</td>
+                <td>{{ item.cn }}</td>
+                <td>
+                  <div class="todo-title">{{ item.title }}</div>
+                  <div class="todo-sub" v-if="item.subtitle">{{ item.subtitle }}</div>
+                  <span v-if="item.screenshot" class="todo-screenshot-link" @click="showScreenshot(item.screenshot)">📷 截图</span>
+                </td>
+                <td style="text-align:right">
+                  <span v-if="item.type === 'after'" class="muted">—</span>
+                  <template v-else>
+                    <div class="price">¥{{ item.amount.toFixed(2) }}</div>
+                    <div v-if="item.useBalanceAmount" class="muted" style="font-size:11px">余额抵扣 ¥{{ item.useBalanceAmount.toFixed(2) }}</div>
+                  </template>
+                </td>
+                <td>
+                  <span class="tag" :class="{
+                    orange: item.type === 'bill' || item.type === 'sale',
+                    pink: item.type === 'cancel',
+                    red: item.type === 'after',
+                    blue: item.type === 'deposit',
+                    green: item.type === 'withdraw'
+                  }">{{ todoStatusLabel(item.type) }}</span>
+                  <div v-if="item.deadlineHoursLeft" class="muted" style="font-size:11px">剩 {{ item.deadlineHoursLeft }}h</div>
+                </td>
+                <td style="text-align:center">
+                  <button class="btn mini" style="padding:4px 10px;font-size:12px" @click="handleTodoAction({ item, action: 'pass' })">{{ todoActionLabel(item.type, 'pass') }}</button>
+                  <button v-if="item.type === 'bill' || item.type === 'sale' || item.type === 'deposit' || item.type === 'cancel'" class="btn gray mini" style="padding:4px 10px;font-size:12px;margin-left:4px" @click="handleTodoAction({ item, action: 'reject' })">{{ todoActionLabel(item.type, 'reject') }}</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <!-- 批量操作浮条 -->
-        <div v-if="todoSelected.size" class="batch-bar">
+        <div v-if="false" class="batch-bar">
           <span>已选 {{ todoSelected.size }} 项</span>
           <div style="display:flex;gap:8px">
             <button class="btn mini" @click="batchPass">批量通过</button>
@@ -4252,6 +4255,32 @@ async function rejectWithdraw(w) {
 function toggleTodoSelect(id) {
   if (todoSelected.has(id)) todoSelected.delete(id);
   else todoSelected.add(id);
+}
+const allTodosFlat = computed(() => {
+  const raw = buildAdminTodos(
+    pendingBills.value, pendingSales.value, pendingAfter.value,
+    pendingDeposits.value, pendingCancelSales.value, pendingWithdraws.value
+  );
+  let items = [...raw.urgent, ...raw.today, ...raw.normal];
+  if (todoFilter.value !== 'all') items = items.filter(i => i.type === todoFilter.value);
+  return items;
+});
+const todoSelectAll = computed(() => allTodosFlat.value.length > 0 && allTodosFlat.value.every(i => todoSelected.has(i.id)));
+function toggleSelectAll() {
+  if (todoSelectAll.value) {
+    allTodosFlat.value.forEach(i => todoSelected.delete(i.id));
+  } else {
+    allTodosFlat.value.forEach(i => todoSelected.add(i.id));
+  }
+}
+function todoActionLabel(type, action) {
+  const passMap = { bill: '通过', sale: '通过', after: '确认收到', deposit: '通过', cancel: '同意', withdraw: '标记完成' };
+  const rejectMap = { bill: '打回', sale: '打回', after: '', deposit: '拒绝', cancel: '拒绝', withdraw: '' };
+  return action === 'pass' ? passMap[type] : rejectMap[type];
+}
+function todoStatusLabel(type) {
+  const map = { bill: '待审核截图', sale: '待审核截图', after: '待客回', deposit: '待审核', cancel: '待审核', withdraw: '待处理' };
+  return map[type] || '待审核';
 }
 function showTodoDetail(item) {
   // 详情暂用 alert 显示，后续可扩展为弹窗

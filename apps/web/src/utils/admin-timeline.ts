@@ -81,7 +81,7 @@ export function buildAdminTodos(
     items.push({
       id: `bill-${b.id}`,
       type: 'bill',
-      typeLabel: '肾表',
+      typeLabel: '付款审核',
       icon: '📋',
       cn: b.cn || '',
       title: b.seriesName || '拼团肾表',
@@ -105,7 +105,7 @@ export function buildAdminTodos(
     items.push({
       id: `sale-${o.id}`,
       type: 'sale',
-      typeLabel: '直售',
+      typeLabel: '清货审核',
       icon: '🛒',
       cn: o.cn || '',
       title: `订单#${o.id}`,
@@ -129,7 +129,7 @@ export function buildAdminTodos(
     items.push({
       id: `after-${a.id}`,
       type: 'after',
-      typeLabel: '售后',
+      typeLabel: '售后处理',
       icon: '🔄',
       cn: a.cn || '',
       title: `${a.type || '售后'} ${a.goods || ''}`,
@@ -151,7 +151,7 @@ export function buildAdminTodos(
     items.push({
       id: `deposit-${d.id}`,
       type: 'deposit',
-      typeLabel: '保证金',
+      typeLabel: '付款审核',
       icon: '💰',
       cn: d.cn || '',
       title: `拍卖#${d.auctionId}`,
@@ -174,7 +174,7 @@ export function buildAdminTodos(
     items.push({
       id: `cancel-${c.id}`,
       type: 'cancel',
-      typeLabel: '取消申请',
+      typeLabel: '转单审核',
       icon: '❌',
       cn: c.cn || '',
       title: `订单#${c.id}`,
@@ -196,7 +196,7 @@ export function buildAdminTodos(
     items.push({
       id: `withdraw-${w.id}`,
       type: 'withdraw',
-      typeLabel: '提现',
+      typeLabel: '提现处理',
       icon: '💸',
       cn: w.cn || '',
       title: `¥${w.amount || 0}`,

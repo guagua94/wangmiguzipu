@@ -145,6 +145,15 @@ img { display: block; max-width: 100%; }
 .styled-table th { color: var(--t3); font-weight: 500; font-size: 12px; }
 tr:hover td { background: var(--brand-bg2); }
 
+/* 待办表格 */
+.todo-table td { font-size: 13px; vertical-align: top; }
+.todo-table tr.urgent td { background: rgba(255,59,48,0.04); }
+.todo-table tr.today td { background: rgba(255,149,0,0.03); }
+.todo-table .todo-title { font-weight: 600; color: var(--t1); margin-bottom: 2px; }
+.todo-table .todo-sub { font-size: 12px; color: var(--t3); margin-bottom: 2px; }
+.todo-table .todo-screenshot-link { font-size: 12px; color: var(--brand); cursor: pointer; }
+.todo-table .todo-screenshot-link:hover { text-decoration: underline; }
+
 /* ===== 工具栏 ===== */
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; align-items: center; }
 .toolbar input, .toolbar select { border: 1.5px solid var(--line2); border-radius: var(--r-sm); padding: 7px 12px; font-size: 13px; }
