@@ -1034,6 +1034,120 @@
         </table>
       </template>
 
+      <template v-else-if="adminTab === '余额管理'">
+        <h2>余额管理</h2>
+        <p class="muted" style="margin-bottom:12px">全站余额总览、流水筛选与团员排名。余额为记账制，团长不能手动调整，所有变动通过系统业务自动记账。</p>
+
+        <!-- 子Tab -->
+        <div class="toolbar" style="margin-bottom:12px">
+          <button :class="['btn mini', balSubTab === 'summary' ? '' : 'gray']" @click="balSubTab = 'summary'">总览</button>
+          <button :class="['btn mini', balSubTab === 'flows' ? '' : 'gray']" @click="balSubTab = 'flows'">流水明细</button>
+          <button :class="['btn mini', balSubTab === 'ranking' ? '' : 'gray']" @click="balSubTab = 'ranking'">团员排名</button>
+        </div>
+
+        <!-- 总览 -->
+        <template v-if="balSubTab === 'summary'">
+          <div v-if="balSummary" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:16px">
+            <div class="card" style="text-align:center;padding:20px 12px">
+              <div style="font-size:28px;font-weight:700;color:#6C5CE7">¥{{ fmtNum(balSummary.totalBalance) }}</div>
+              <div class="muted" style="margin-top:4px">全站总余额</div>
+            </div>
+            <div class="card" style="text-align:center;padding:20px 12px">
+              <div style="font-size:28px;font-weight:700">{{ balSummary.totalUsers }}</div>
+              <div class="muted" style="margin-top:4px">总用户数</div>
+            </div>
+            <div class="card" style="text-align:center;padding:20px 12px">
+              <div style="font-size:28px;font-weight:700">¥{{ fmtNum(balSummary.avgBalance) }}</div>
+              <div class="muted" style="margin-top:4px">人均余额</div>
+            </div>
+            <div class="card" style="text-align:center;padding:20px 12px">
+              <div style="font-size:28px;font-weight:700">{{ balSummary.todayFlowCount }}</div>
+              <div class="muted" style="margin-top:4px">今日流水笔数</div>
+            </div>
+          </div>
+          <div class="card" style="margin:8px 12px;padding:16px">
+            <h3 class="sec">快捷操作</h3>
+            <button class="btn mini" @click="balSubTab = 'flows'">查看流水明细 →</button>
+            <button class="btn mini" style="margin-left:8px" @click="balSubTab = 'ranking'">查看团员排名 →</button>
+          </div>
+        </template>
+
+        <!-- 流水明细 -->
+        <template v-if="balSubTab === 'flows'">
+          <div class="toolbar" style="margin-bottom:12px;flex-wrap:wrap;gap:8px">
+            <input v-model="balFlowFilter.cn" placeholder="CN搜索" style="width:120px" @keyup.enter="loadBalFlows" />
+            <select v-model="balFlowFilter.type" style="width:120px">
+              <option value="">全部类型</option>
+              <option value="拼团付款">拼团付款</option>
+              <option value="明款付款">明款付款</option>
+              <option value="拍卖付款">拍卖付款</option>
+              <option value="提现">提现</option>
+              <option value="提现退回">提现退回</option>
+              <option value="二次收肾">二次收肾</option>
+              <option value="转单">转单</option>
+              <option value="退款">退款</option>
+              <option value="补邮">补邮</option>
+            </select>
+            <select v-model="balFlowFilter.direction" style="width:100px">
+              <option value="">收支不限</option>
+              <option value="in">收入</option>
+              <option value="out">支出</option>
+            </select>
+            <input v-model="balFlowFilter.start" type="date" style="width:140px" />
+            <input v-model="balFlowFilter.end" type="date" style="width:140px" />
+            <button class="btn mini" @click="loadBalFlows">查询</button>
+            <button class="btn gray mini" @click="resetBalFlowFilter">重置</button>
+            <button class="btn mini" @click="exportBalFlowsCSV">导出CSV</button>
+            <button class="btn mini" @click="exportBalFlowsXLSX">导出Excel</button>
+          </div>
+          <div v-if="!balFlows.length" class="card" style="text-align:center;padding:30px 16px;margin:8px 12px"><div style="font-size:36px;opacity:.3;margin-bottom:8px">📋</div><p class="muted">暂无流水记录</p></div>
+          <table v-else>
+            <thead><tr><th>时间</th><th>CN</th><th>类型</th><th>收支</th><th>金额</th><th>备注</th></tr></thead>
+            <tbody>
+              <tr v-for="(f, i) in balFlows" :key="i">
+                <td>{{ fmtTime(f.createdAt) }}</td>
+                <td>{{ f.cn || '-' }}</td>
+                <td>{{ f.type }}</td>
+                <td><span :class="['tag', f.direction === 'in' ? 'green' : 'orange']">{{ f.direction === 'in' ? '收入' : '支出' }}</span></td>
+                <td><b :class="f.direction === 'in' ? 'price' : ''">¥{{ fmtNum(f.amountNum ?? f.amount) }}</b></td>
+                <td>{{ f.note || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="toolbar" style="margin-top:12px" v-if="balFlowTotal > balFlowFilter.size">
+            <button class="btn gray mini" :disabled="balFlowFilter.page <= 1" @click="balFlowFilter.page--; loadBalFlows()">上一页</button>
+            <span class="muted">第 {{ balFlowFilter.page }} / {{ Math.ceil(balFlowTotal / balFlowFilter.size) }} 页（共 {{ balFlowTotal }} 条）</span>
+            <button class="btn gray mini" :disabled="balFlowFilter.page * balFlowFilter.size >= balFlowTotal" @click="balFlowFilter.page++; loadBalFlows()">下一页</button>
+          </div>
+        </template>
+
+        <!-- 团员排名 -->
+        <template v-if="balSubTab === 'ranking'">
+          <div class="toolbar" style="margin-bottom:12px">
+            <button class="btn mini" @click="exportBalRankingCSV">导出CSV</button>
+            <button class="btn mini" @click="exportBalRankingXLSX">导出Excel</button>
+          </div>
+          <div v-if="!balRanking.length" class="card" style="text-align:center;padding:30px 16px;margin:8px 12px"><div style="font-size:36px;opacity:.3;margin-bottom:8px">🏆</div><p class="muted">暂无数据</p></div>
+          <table v-else>
+            <thead><tr><th style="width:60px">排名</th><th>CN</th><th>账号</th><th>角色</th><th>余额</th></tr></thead>
+            <tbody>
+              <tr v-for="(r, i) in balRanking" :key="r.id">
+                <td>
+                  <span v-if="i === 0" style="font-size:18px">🥇</span>
+                  <span v-else-if="i === 1" style="font-size:18px">🥈</span>
+                  <span v-else-if="i === 2" style="font-size:18px">🥉</span>
+                  <span v-else>{{ i + 1 }}</span>
+                </td>
+                <td>{{ r.cn || '-' }}</td>
+                <td>{{ r.account }}</td>
+                <td><span :class="['tag', r.role === 'owner' ? 'purple' : 'gray']">{{ r.role === 'owner' ? '店主' : '团员' }}</span></td>
+                <td><b class="price">¥{{ fmtNum(r.balance) }}</b></td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+      </template>
+
       <template v-else-if="adminTab === '店铺设置'">
         <h2>店铺设置（保存后 C 端立即生效）</h2>
         <h3 class="sec">拼团囤货规则</h3>
@@ -2592,7 +2706,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue';
 import { store, setAuth, logout, api } from './main.js';
-import { pickAndUploadImage, parseCSV, toCSV, downloadCSV, pickCSVFile } from './ui.js';
+import { pickAndUploadImage, parseCSV, toCSV, downloadCSV, pickCSVFile, exportXLSX } from './ui.js';
 import Timeline from './components/Timeline.vue';
 import StockWorkspace from './components/StockWorkspace.vue';
 import AdminTimelineNode from './components/AdminTimelineNode.vue';
@@ -3708,7 +3822,7 @@ async function deactivateAccount() {
 }
 
 /* ===== 后台 ===== */
-const adminMenus = ['数据看板', '订单管理', '预警中心', '付款审核', '拼团管理', '直售管理', '拍卖管理', '会员管理', '售后管理', '二次收肾', '清货/转单', '提现管理', '店铺设置', '我的账号'];
+const adminMenus = ['数据看板', '订单管理', '预警中心', '付款审核', '拼团管理', '直售管理', '拍卖管理', '会员管理', '售后管理', '二次收肾', '清货/转单', '提现管理', '余额管理', '店铺设置', '我的账号'];
 const adminTab = ref('数据看板');
 const paymentAuditTab = ref('all'); // 'all' | 'group' | 'sale' | 'clear' | 'second' | 'deposit' | 'processed'
 
@@ -4551,6 +4665,9 @@ async function loadAdminExt() {
   allDeposits.value = await api('GET', '/auction/all-deposits').catch(() => []);
   allAuctionOrders.value = await api('GET', '/auction/all-orders').catch(() => []);
   withdrawList.value = await api('GET', '/balance/all-withdraws').catch(() => []);
+  loadBalSummary();
+  loadBalFlows();
+  loadBalRanking();
   const c = await api('GET', '/shop/config').catch(() => null);
   if (c) {
     Object.assign(cfgEd, { groupFreeDays: c.groupFreeDays||30, groupOverFeeOn: c.groupOverFeeOn, groupOverDays: c.groupOverDays||90, saleFreeDays: c.saleFreeDays||7, saleOverFeeOn: c.saleOverFeeOn, saleOverDays: c.saleOverDays||30, afterSaleDays: c.afterSaleDays||7, payCodeAli: c.payCodeAli || '', payCodeWx: c.payCodeWx || '' });
@@ -4559,6 +4676,97 @@ async function loadAdminExt() {
     cfgUnitFeesArr.value = JSON.parse(c.unitFees || '[{"name":"拍立得 / 透卡 / 明信片","fee":0.1,"note":"纸片类小件"},{"name":"吧唧 / 立牌 / 色纸 / 文件夹","fee":0.2,"note":"亚克力/铁皮/纸质中件"},{"name":"手办 / 其他","fee":0.5,"note":"大件/其他"}]');
   }
 }
+
+/* ===== 余额管理 ===== */
+const balSubTab = ref('summary');
+const balSummary = ref(null);
+const balFlows = ref([]);
+const balFlowTotal = ref(0);
+const balFlowFilter = reactive({ cn: '', type: '', direction: '', start: '', end: '', page: 1, size: 20 });
+const balRanking = ref([]);
+
+async function loadBalSummary() {
+  balSummary.value = await api('GET', '/balance/summary').catch(() => null);
+}
+async function loadBalFlows() {
+  const q = new URLSearchParams();
+  if (balFlowFilter.cn) q.set('cn', balFlowFilter.cn);
+  if (balFlowFilter.type) q.set('type', balFlowFilter.type);
+  if (balFlowFilter.direction) q.set('direction', balFlowFilter.direction);
+  if (balFlowFilter.start) q.set('start', balFlowFilter.start);
+  if (balFlowFilter.end) q.set('end', balFlowFilter.end);
+  q.set('page', balFlowFilter.page);
+  q.set('size', balFlowFilter.size);
+  const r = await api('GET', '/balance/all-flows?' + q.toString()).catch(() => ({ total: 0, items: [] }));
+  balFlows.value = r.items || r || [];
+  balFlowTotal.value = r.total || (Array.isArray(r) ? r.length : 0);
+}
+async function loadBalRanking() {
+  balRanking.value = await api('GET', '/balance/ranking').catch(() => []);
+}
+function resetBalFlowFilter() {
+  Object.assign(balFlowFilter, { cn: '', type: '', direction: '', start: '', end: '', page: 1 });
+  loadBalFlows();
+}
+async function exportBalFlowsCSV() {
+  const q = new URLSearchParams();
+  if (balFlowFilter.cn) q.set('cn', balFlowFilter.cn);
+  if (balFlowFilter.type) q.set('type', balFlowFilter.type);
+  if (balFlowFilter.direction) q.set('direction', balFlowFilter.direction);
+  if (balFlowFilter.start) q.set('start', balFlowFilter.start);
+  if (balFlowFilter.end) q.set('end', balFlowFilter.end);
+  q.set('size', 10000);
+  const r = await api('GET', '/balance/all-flows?' + q.toString()).catch(() => ({ items: [] }));
+  const items = r.items || r || [];
+  const rows = items.map(f => ({
+    '时间': new Date(+f.createdAt || f.createdAt).toLocaleString('zh-CN'),
+    'CN': f.cn || '',
+    '类型': f.type || '',
+    '收支': f.direction === 'in' ? '收入' : '支出',
+    '金额': f.amountNum ?? f.amount,
+    '备注': f.note || '',
+  }));
+  downloadCSV('余额流水.csv', rows);
+}
+async function exportBalFlowsXLSX() {
+  const q = new URLSearchParams();
+  if (balFlowFilter.cn) q.set('cn', balFlowFilter.cn);
+  if (balFlowFilter.type) q.set('type', balFlowFilter.type);
+  if (balFlowFilter.direction) q.set('direction', balFlowFilter.direction);
+  if (balFlowFilter.start) q.set('start', balFlowFilter.start);
+  if (balFlowFilter.end) q.set('end', balFlowFilter.end);
+  q.set('size', 10000);
+  const r = await api('GET', '/balance/all-flows?' + q.toString()).catch(() => ({ items: [] }));
+  const items = r.items || r || [];
+  exportXLSX('余额流水', ['时间','CN','类型','收支','金额','备注'], items.map(f => [
+    new Date(+f.createdAt || f.createdAt).toLocaleString('zh-CN'),
+    f.cn || '',
+    f.type || '',
+    f.direction === 'in' ? '收入' : '支出',
+    f.amountNum ?? f.amount,
+    f.note || '',
+  ]));
+}
+async function exportBalRankingCSV() {
+  const rows = balRanking.value.map((r, i) => ({
+    '排名': i + 1,
+    'CN': r.cn || '',
+    '账号': r.account || '',
+    '角色': r.role === 'owner' ? '店主' : '团员',
+    '余额': r.balance,
+  }));
+  downloadCSV('余额排名.csv', rows);
+}
+async function exportBalRankingXLSX() {
+  exportXLSX('余额排名', ['排名','CN','账号','角色','余额'], balRanking.value.map((r, i) => [
+    i + 1, r.cn || '', r.account || '', r.role === 'owner' ? '店主' : '团员', r.balance,
+  ]));
+}
+function fmtNum(n) {
+  const v = Number(n) || 0;
+  return v.toFixed(2).replace(/\.00$/, '').replace(/(\.\d)0$/, '$1');
+}
+
 async function createSecond() {
   if (!sb.userId) return alert('请选择团员');
   try { await api('POST', '/second/create', { ...sb }); sb.title = ''; alert('已发起'); loadAdminExt(); } catch (e) { alert(e.message); }

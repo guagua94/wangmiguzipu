@@ -147,6 +147,27 @@ export function downloadCSV(filename, rows, headers) {
   URL.revokeObjectURL(url);
 }
 
+/** 导出 Excel(.xls) 文件，零依赖，使用 SpreadsheetML XML 格式 */
+export function exportXLSX(filename, headers, rows) {
+  const esc = (v) => String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const headerXml = headers.map(h => `<Cell><Data Type="String">${esc(h)}</Data></Cell>`).join('');
+  const rowsXml = rows.map(r => `<Row>${r.map(c => {
+    const n = Number(c);
+    if (!isNaN(n) && c !== '' && c !== null && c !== undefined) {
+      return `<Cell><Data Type="Number">${n}</Data></Cell>`;
+    }
+    return `<Cell><Data Type="String">${esc(c)}</Data></Cell>`;
+  }).join('')}</Row>`).join('');
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<?mso-application progid="Excel.Sheet"?>\n<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">\n<Worksheet ss:Name="${esc(filename)}">\n<Table>\n<Row>${headerXml}</Row>\n${rowsXml}\n</Table>\n</Worksheet>\n</Workbook>`;
+  const blob = new Blob(['\ufeff' + xml], { type: 'application/vnd.ms-excel;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename + '.xls';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /** 读取本地 CSV 文件 */
 export function readCSVFile(file) {
   return new Promise((resolve, reject) => {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Req, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, Query, BadRequestException } from '@nestjs/common';
 import { InjectRepository, TypeOrmModule } from '@nestjs/typeorm';
 import { Repository, In } from 'typeorm';
 import { Request } from 'express';
@@ -102,6 +102,83 @@ export class BalanceService {
     await nRepo.save(nRepo.create({ userId: w.userId, title: '提现被拒绝', body: `提现 ¥${Money.of(w.amount)} 被拒绝，冻结金额已退回余额` }));
     return { ok: true };
   }
+
+  /** 全站余额汇总统计 */
+  async summary() {
+    const users = await this.userRepo.find();
+    const totalBalance = users.reduce((s, u) => s + (+u.balance || 0), 0);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayFlows = await this.flowRepo.find({
+      where: { createdAt: new Date(todayStart) },
+      order: { id: 'desc' },
+    });
+    return {
+      totalUsers: users.length,
+      totalBalance: Money.of(totalBalance),
+      avgBalance: users.length ? Money.of(totalBalance / users.length) : '0.00',
+      todayFlowCount: todayFlows.length,
+    };
+  }
+
+  /** 全站余额流水查询（店主） */
+  async allFlows(opts: { cn?: string; start?: string; end?: string; type?: string; direction?: 'in'|'out'|'all'; page?: number; size?: number }) {
+    const qb = this.flowRepo.createQueryBuilder('f').leftJoinAndSelect(User, 'u', 'u.id = f.userId');
+    
+    if (opts.cn) {
+      qb.andWhere('u.cn ILIKE :cn', { cn: `%${opts.cn}%` });
+    }
+    if (opts.start) {
+      qb.andWhere('f.createdAt >= :start', { start: new Date(opts.start) });
+    }
+    if (opts.end) {
+      qb.andWhere('f.createdAt <= :end', { end: new Date(opts.end + 'T23:59:59') });
+    }
+    if (opts.type) {
+      qb.andWhere('f.type = :type', { type: opts.type });
+    }
+    if (opts.direction === 'in') {
+      qb.andWhere('f.amount > 0');
+    } else if (opts.direction === 'out') {
+      qb.andWhere('f.amount < 0');
+    }
+    
+    const page = opts.page || 1;
+    const size = opts.size || 20;
+    const [flows, total] = await qb
+      .orderBy('f.id', 'DESC')
+      .skip((page - 1) * size)
+      .take(size)
+      .getManyAndCount();
+    
+    const userIds = [...new Set(flows.map(f => f.userId))];
+    const users = userIds.length ? await this.userRepo.find({ where: { id: In(userIds) } }) : [];
+    
+    return {
+      total,
+      page,
+      size,
+      items: flows.map(f => ({
+        ...f,
+        cn: users.find(u => u.id === f.userId)?.cn || '',
+        amountNum: +f.amount,
+        direction: +f.amount > 0 ? 'in' : 'out',
+      })),
+    };
+  }
+
+  /** 余额排名（按余额从高到低） */
+  async ranking() {
+    const users = await this.userRepo.find({ order: { balance: 'DESC' } });
+    return users.map((u, idx) => ({
+      rank: idx + 1,
+      id: u.id,
+      cn: u.cn,
+      account: u.account,
+      balance: u.balance,
+      role: u.role,
+    }));
+  }
 }
 
 @Controller('balance')
@@ -142,6 +219,32 @@ export class BalanceController {
   async reject(@Req() req: Request & { user?: JwtUser }, @Body() b: { id: number }) {
     checkRole(req.user, ['owner', 'admin']);
     return this.svc.rejectWithdraw(b.id, req.user!);
+  }
+
+  @Get('summary')
+  async summary(@Req() req: Request & { user?: JwtUser }) {
+    checkRole(req.user, ['owner', 'admin']);
+    return this.svc.summary();
+  }
+
+  @Get('all-flows')
+  async allFlows(@Req() req: Request & { user?: JwtUser }, @Query() q: any) {
+    checkRole(req.user, ['owner', 'admin']);
+    return this.svc.allFlows({
+      cn: q.cn,
+      start: q.start,
+      end: q.end,
+      type: q.type,
+      direction: q.direction || 'all',
+      page: +(q.page || 1),
+      size: +(q.size || 20),
+    });
+  }
+
+  @Get('ranking')
+  async ranking(@Req() req: Request & { user?: JwtUser }) {
+    checkRole(req.user, ['owner', 'admin']);
+    return this.svc.ranking();
   }
 }
 
