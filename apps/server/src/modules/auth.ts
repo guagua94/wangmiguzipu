@@ -66,6 +66,19 @@ export class AuthService {
     return { token: this.sign(u), user: this.safe(u) };
   }
 
+  /** 管理员重置任意账号密码 */
+  async resetPassword(adminId: number, account: string, newPassword: string) {
+    const admin = await this.userRepo.findOneByOrFail({ id: adminId });
+    if (admin.role !== 'owner' && admin.role !== 'admin') {
+      return { error: '无权操作' };
+    }
+    const u = await this.userRepo.findOne({ where: { account } });
+    if (!u) return { error: '账号不存在' };
+    if (!newPassword || newPassword.length < 6) return { error: '新密码至少6位' };
+    await this.userRepo.update(u.id, { passwordHash: await bcrypt.hash(newPassword, 10) });
+    return { ok: true, message: `账号 ${account} 密码已重置` };
+  }
+
   async me(uid: number) {
     const u = await this.userRepo.findOneByOrFail({ id: uid });
     return this.safe(u);
@@ -93,6 +106,12 @@ export class AuthController {
   async me(@Req() req: Request & { user?: JwtUser }) {
     checkRole(req.user, []);
     return this.svc.me(req.user!.id);
+  }
+
+  @Post('reset-password')
+  async resetPassword(@Req() req: Request & { user?: JwtUser }, @Body() b: { account: string; newPassword: string }) {
+    checkRole(req.user, ['owner', 'admin']);
+    return this.svc.resetPassword(req.user!.id, b.account, b.newPassword);
   }
 }
 
