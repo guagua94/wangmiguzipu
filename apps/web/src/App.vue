@@ -4348,8 +4348,10 @@ async function ban(u) {
   loadAdmin();
 }
 async function resetPwd(u) {
-  const r = await api('POST', '/user/reset-password', { id: u.id });
-  alert('新密码：' + r.password + '（请线下告知）');
+  const newPwd = prompt('输入新密码（至少6位）');
+  if (!newPwd || newPwd.length < 6) return alert('密码至少6位');
+  await api('POST', '/auth/reset-password', { account: u.account, newPassword: newPwd });
+  alert(`账号 ${u.account} 密码已重置`);
 }
 async function pickAuctionImage() {
   try { newAuction.img = await pickAndUploadImage(); alert('图片上传成功'); }
