@@ -922,10 +922,14 @@
             <tr v-for="b in secondBills" :key="b.id">
               <td>#{{ b.id }}</td><td>{{ b.cn }}</td><td>{{ b.title }}</td><td>{{ b.calc }}</td><td>¥{{ b.amount }}</td>
               <td><span class="tag orange">{{ b.state }}</span></td>
-              <td v-if="b.state === '已提交截图'">
-                <button class="btn mini" @click="auditSecond(b, true)">通过</button>
-                <button class="btn gray mini" @click="auditSecond(b, false)">打回</button>
-              </td><td v-else>—</td>
+              <td>
+                <span v-if="b.screenshot" class="todo-screenshot-link" @click="showScreenshot(b.screenshot)">📷 查看截图</span>
+                <template v-if="b.state === '已提交截图'">
+                  <button class="btn mini" @click="auditSecond(b, true)">通过</button>
+                  <button class="btn gray mini" @click="auditSecond(b, false)">打回</button>
+                </template>
+                <span v-else>—</span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -966,6 +970,7 @@
               </td>
               <td>¥{{ c.total }}</td><td><span class="tag orange">{{ c.state }}</span></td>
               <td>
+                <span v-if="c.screenshot" class="todo-screenshot-link" @click="showScreenshot(c.screenshot)">📷 查看截图</span>
                 <button v-if="c.state === '已提交截图'" class="btn mini" @click="auditClear(c, true)">审核通过</button>
                 <button v-if="c.state === '已提交截图'" class="btn gray mini" @click="auditClear(c, false)">打回</button>
                 <button v-if="c.state === '审核通过'" class="btn mini" @click="shipClear(c)">上传物流单号并发货</button>
@@ -1694,7 +1699,7 @@
               <div style="font-size:36px;opacity:.3;margin-bottom:8px">📦</div>
               <p class="muted">暂无订单</p>
             </div>
-            <div v-for="o in allOrders" :key="o.type + '-' + o.orderId" class="card">
+            <div v-for="o in allOrders" :key="o.type + '-' + o.orderId" class="card" @click="showMeOrderDetailModal(o)">
               <div class="row between" style="margin-bottom:6px">
                 <span class="muted" style="font-size:13px">{{ o.title || '订单 #' + o.orderId }}</span>
                 <span :class="['tag', o.state === '待付款' ? 'orange' : o.state === '已提交截图' ? 'pink' : 'green']">{{ o.type === 'group' ? '拼团·' : o.type === 'sale' ? '直售·' : '拍卖·' }}{{ o.state }}</span>
@@ -1704,10 +1709,13 @@
                 <span v-if="o.type === 'group'" class="muted">¥{{ (i.price * i.qty).toFixed(2) }}</span>
               </div>
               <div class="row between" style="margin-top:8px;padding-top:8px;border-top:1px solid var(--line)">
+                <div class="row" style="gap:6px" @click.stop="">
+                  <button class="btn mini gray" @click="showMeOrderDetailModal(o)">📋 详情</button>
+                </div>
                 <b class="price" style="font-size:16px">¥{{ o.total }}</b>
-                <div class="row" style="gap:6px">
-                  <button v-if="o.state === '待付款'" class="btn mini" @click="o.type === 'group' ? payBill(o.raw) : o.type === 'auction' ? payAuctionOrder(o.raw) : paySale(o.raw)">付款</button>
-                  <button v-if="o.type === 'sale' && o.hours < 48 && o.state !== '已发货' && o.state !== '已完成' && o.state !== '已取消' && o.state !== '已取消（超时）' && o.state !== '申请取消'" class="btn mini gray" @click="cancelSale(o.raw)">{{ o.hours < 24 ? '取消' : '申请取消' }}</button>
+                <div class="row" style="gap:6px" @click.stop="">
+                  <button v-if="o.state === '待付款'" class="btn mini" @click="o.type === 'group' ? payBill(o) : o.type === 'auction' ? payAuctionOrder(o) : paySale(o)">付款</button>
+                  <button v-if="o.type === 'sale' && o.hours < 48 && o.state !== '已发货' && o.state !== '已完成' && o.state !== '已取消' && o.state !== '已取消（超时）' && o.state !== '申请取消'" class="btn mini gray" @click="cancelSale(o)">{{ o.hours < 24 ? '取消' : '申请取消' }}</button>
                   <button v-if="(o.type === 'group' && (o.state === '待付款' || o.state === '已付款' || o.state === '囤货中')) || (o.type === 'sale' && o.state === '囤货中') || (o.type === 'auction' && (o.state === '已付款' || o.state === '囤货中'))" class="btn mini" @click="openQuickTransfer(o)">转单</button>
                   <span v-if="o.type === 'sale' && o.state === '申请取消'" class="tag pink" style="font-size:11px">审核中</span>
                 </div>
@@ -1741,7 +1749,7 @@
               <div style="font-size:36px;opacity:.3;margin-bottom:8px">🧩</div>
               <p class="muted">暂无肾表</p>
             </div>
-            <div v-for="b in myBills" :key="b.id" class="card">
+            <div v-for="b in myBills" :key="b.id" class="card" @click="showMeOrderDetailModal({ ...b, type: 'group', orderId: b.id, title: b.seriesName, state: b.state })">
               <div class="row between" style="margin-bottom:8px">
                 <b style="font-size:14px">{{ b.seriesName }}</b>
                 <span :class="['tag', b.state === '待付款' ? 'orange' : b.state === '已提交截图' ? 'pink' : 'green']">{{ b.state }}</span>
@@ -1770,7 +1778,7 @@
               </table>
               <div class="row between" style="padding-top:6px;border-top:1px solid #eee">
                 <b class="price" style="font-size:16px">合计：¥{{ b.total }}</b>
-                <div class="row" style="gap:6px">
+                <div class="row" style="gap:6px" @click.stop="">
                   <button v-if="b.state === '待付款'" class="btn mini" @click="payBill(b)">付款</button>
                   <button v-if="b.state === '待付款' || b.state === '已付款' || b.state === '囤货中'" class="btn mini gray" @click="openQuickTransfer({type:'group', raw:b, state:b.state, items:b.items})">转单</button>
                 </div>
@@ -1783,7 +1791,7 @@
               <div style="font-size:36px;opacity:.3;margin-bottom:8px">🛒</div>
               <p class="muted">暂无直售订单</p>
             </div>
-            <div v-for="o in myBuys" :key="o.id" class="card">
+            <div v-for="o in myBuys" :key="o.id" class="card" @click="showMeOrderDetailModal({ ...o, type: 'sale', orderId: o.id, title: '', state: o.status })">
               <div class="row between"><span class="muted">#{{ o.id }}</span>
                 <span :class="['tag', o.status === '待付款' ? 'orange' : o.status === '已提交截图' ? 'pink' : o.status === '申请取消' ? 'pink' : 'green']">{{ o.status }}</span></div>
               <div v-for="i in o.items" :key="i.id" style="font-size:13px;padding:4px 0">{{ i.name }} ×{{ i.qty }}</div>
@@ -1791,7 +1799,7 @@
                 <span class="tag" :class="o.blindShipMode === 'video' ? 'pink' : 'green'">{{ o.blindShipMode === 'video' ? '📹 需要视频选择且拆开' : '🎲 直接随机发货不拆开' }}</span>
               </div>
               <div class="row between"><b class="price">¥{{ o.total }}</b>
-                <div class="row" style="gap:6px">
+                <div class="row" style="gap:6px" @click.stop="">
                   <button v-if="o.status === '待付款'" class="btn mini" @click="paySale(o)">付款</button>
                   <button v-if="o.status !== '已发货' && o.status !== '已完成' && o.status !== '已取消' && o.status !== '已取消（超时）' && o.status !== '申请取消' && o.hours < 48" class="btn mini gray" @click="cancelSale(o)">{{ o.hours < 24 ? '取消' : '申请取消' }}</button>
                   <button v-if="o.status === '囤货中'" class="btn mini" @click="openQuickTransfer({type:'sale', raw:o, state:o.status, items:o.items})">转单</button>
@@ -1806,10 +1814,10 @@
               <div style="font-size:36px;opacity:.3;margin-bottom:8px">🔨</div>
               <p class="muted">暂无拍卖订单</p>
             </div>
-            <div v-for="a in myAuctionOrders" :key="a.id" class="card">
+            <div v-for="a in myAuctionOrders" :key="a.id" class="card" @click="showMeOrderDetailModal({ ...a, type: 'auction', orderId: a.id, title: a.name, state: a.state, items: [{ name: a.name, qty: 1 }], total: a.curPrice })">
               <div class="row between">
                 <div class="row" style="align-items:center;gap:8px;flex:1;min-width:0">
-                  <img v-if="a.img" :src="a.img" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0" @click="showScreenshot(a.img)" />
+                  <img v-if="a.img" :src="a.img" style="width:32px;height:32px;border-radius:6px;object-fit:cover;flex-shrink:0" @click.stop="showScreenshot(a.img)" />
                   <span v-else style="font-size:20px;flex-shrink:0">{{ a.emoji }}</span>
                   <span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">#{{ a.id }} · {{ a.name }}</span>
                 </div>
@@ -1820,7 +1828,7 @@
                 <span class="tag orange" style="font-size:12px">⏳ {{ auctionCountdown[a.id] }}</span>
               </div>
               <div class="row between"><b class="price">¥{{ a.curPrice }}</b>
-                <div class="row" style="gap:6px">
+                <div class="row" style="gap:6px" @click.stop="">
                   <button v-if="a.state === '待付款' && a.isWinner" class="btn mini" @click="payAuctionOrder(a)">付款</button>
                   <button v-if="a.state === '已付款' || a.state === '囤货中'" class="btn mini gray" @click="openQuickTransfer({type:'auction', raw:a, state:a.state, items:[{name:a.name, qty:1}], seriesName:'拍卖'})">转单</button>
                 </div>
@@ -1836,11 +1844,11 @@
             <h3>📋 二次收肾</h3>
           </div>
           <div v-if="!mySecondBills.length" class="card" style="text-align:center;padding:30px 16px"><div style="font-size:36px;opacity:.3;margin-bottom:8px">📋</div><p class="muted">暂无二次收肾单</p></div>
-          <div v-for="b in mySecondBills" :key="b.id" class="card">
+            <div v-for="b in mySecondBills" :key="b.id" class="card" @click="showMeOrderDetailModal({ ...b, type: 'second', typeLabel: '二次收肾' })">
             <div class="row between"><b style="font-size:13px">{{ b.title }}</b>
               <span :class="['tag', b.state === '待付款' ? 'orange' : b.state === '已提交截图' ? 'pink' : 'green']">{{ b.state }}</span></div>
             <p class="muted">用途：{{ b.calc }} · 金额：¥{{ b.amount }}</p>
-            <div v-if="b.state === '待付款'" class="row" style="gap:6px;margin-top:6px">
+            <div v-if="b.state === '待付款'" class="row" style="gap:6px;margin-top:6px" @click.stop="">
               <button class="btn mini" @click="paySecond(b)">付款</button>
             </div>
           </div>
@@ -2143,14 +2151,14 @@
           <!-- 清货单 -->
           <h3 class="sec">📦 我的清货单</h3>
           <div v-if="!myClears.length" class="card" style="text-align:center;padding:30px 16px"><div style="font-size:36px;opacity:.3;margin-bottom:8px">📦</div><p class="muted">暂无清货单</p></div>
-          <div v-for="c in myClears" :key="c.id" class="card">
+          <div v-for="c in myClears" :key="c.id" class="card" @click="showMeOrderDetailModal(c)">
             <div class="row between"><span class="muted">{{ c.freightName }}+{{ c.packName }}{{ +c.overFee ? '+仓费¥' + c.overFee : '' }}</span>
               <span class="tag orange">{{ c.state }}</span></div>
             <!-- 商品明细 -->
             <div v-if="parseClearItems(c.items).length" style="margin-top:8px;border-top:1px solid var(--line);padding-top:8px">
               <div v-for="(it, idx) in parseClearItems(c.items)" :key="idx" class="row between" style="font-size:13px;padding:2px 0;align-items:center">
                 <span class="row" style="align-items:center;gap:6px">
-                  <img v-if="it.img" :src="it.img" style="width:24px;height:24px;border-radius:4px;object-fit:cover;flex-shrink:0" @click="showScreenshot(it.img)" />
+                  <img v-if="it.img" :src="it.img" style="width:24px;height:24px;border-radius:4px;object-fit:cover;flex-shrink:0" @click.stop="showScreenshot(it.img)" />
                   <span v-else style="font-size:16px">{{ it.emoji || '🎁' }}</span>
                   {{ it.name }}<span class="muted"> ×{{ it.qty }}</span>
                 </span>
@@ -2169,7 +2177,7 @@
               <span class="muted">物流单号：</span><b>{{ c.trackingNo }}</b>
             </div>
             <div class="row between" style="margin-top:8px"><b class="price">¥{{ c.total }}</b>
-              <div class="row" style="gap:6px">
+              <div class="row" style="gap:6px" @click.stop="">
                 <button v-if="c.state === '待付款'" class="btn mini" @click="payClearing(c)">付款</button>
                 <button v-if="c.state === '已发货'" class="btn mini" @click="confirmClearing(c)">确认收货</button>
               </div>
@@ -2606,12 +2614,212 @@
     </div>
 
 
-    <!-- 截图预览模态 -->
-    <div v-if="showScreenshotModal" class="screenshot-modal" @click.self="showScreenshotModal = false">
-      <img :src="screenshotUrl" />
+    <!-- 我的订单详情弹窗 -->
+    <div v-if="showMeOrderDetail" class="modal-mask" @click.self="showMeOrderDetail = false">
+      <div class="modal-card me-order-detail">
+        <h3 v-if="meOrderDetail">
+          <span class="order-type-tag" :class="meOrderDetail.type === 'group' ? 'pink' : meOrderDetail.type === 'sale' ? 'blue' : meOrderDetail.type === 'auction' ? 'orange' : meOrderDetail.type === 'clear' ? 'green' : 'gray'">
+            {{ meOrderDetail.typeLabel || (meOrderDetail.type === 'group' ? '拼团' : meOrderDetail.type === 'sale' ? '直售' : meOrderDetail.type === 'auction' ? '拍卖' : meOrderDetail.type === 'clear' ? '清货' : meOrderDetail.type === 'second' ? '二次收肾' : meOrderDetail.type === 'transfer' ? '转单' : '订单') }}
+          </span>
+          <span>订单详情</span>
+        </h3>
+        <div v-if="meOrderDetail" class="me-detail-body">
+          <!-- 商品大图 -->
+          <div v-if="getOrderCoverImage(meOrderDetail)" class="me-order-cover">
+            <img :src="getOrderCoverImage(meOrderDetail)" @click="showScreenshot(getOrderCoverImage(meOrderDetail))" style="cursor:zoom-in" />
+          </div>
+          <div v-else-if="getOrderEmoji(meOrderDetail)" class="me-order-cover emoji-cover">
+            <span>{{ getOrderEmoji(meOrderDetail) }}</span>
+          </div>
+
+          <!-- 基本信息 -->
+          <div class="me-detail-section">
+            <div class="me-detail-row">
+              <span class="me-detail-label">订单号</span>
+              <span class="me-detail-value">#{{ meOrderDetail.id || meOrderDetail.orderId }}</span>
+            </div>
+            <div class="me-detail-row">
+              <span class="me-detail-label">状态</span>
+              <span class="tag" :class="meOrderDetail.type === 'group' ? orderStatusClass(meOrderDetail.state) : orderStatusClass(meOrderDetail.status || meOrderDetail.state)">{{ meOrderDetail.status || meOrderDetail.state }}</span>
+            </div>
+            <div class="me-detail-row">
+              <span class="me-detail-label">下单时间</span>
+              <span class="me-detail-value">{{ fmtTime(meOrderDetail.createdAt || meOrderDetail.time) }}</span>
+            </div>
+            <div v-if="meOrderDetail.seriesName || meOrderDetail.title" class="me-detail-row">
+              <span class="me-detail-label">{{ meOrderDetail.type === 'group' ? '系列' : '用途' }}</span>
+              <span class="me-detail-value">{{ meOrderDetail.seriesName || meOrderDetail.title }}</span>
+            </div>
+          </div>
+
+          <!-- 商品明细 -->
+          <div class="me-detail-section">
+            <h4 class="me-detail-section-title">商品明细</h4>
+            <!-- 拼团商品 -->
+            <div v-if="meOrderDetail.type === 'group' && meOrderDetail.items" class="me-detail-items">
+              <table style="width:100%;font-size:13px;border-collapse:collapse">
+                <thead>
+                  <tr style="color:#888;border-bottom:1px solid #eee">
+                    <th style="text-align:left;padding:6px 4px">谷子</th>
+                    <th style="text-align:center;padding:6px 4px">分类</th>
+                    <th style="text-align:right;padding:6px 4px">单价</th>
+                    <th style="text-align:center;padding:6px 4px">数量</th>
+                    <th style="text-align:center;padding:6px 4px">谷序</th>
+                    <th style="text-align:right;padding:6px 4px">小计</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="i in meOrderDetail.items" :key="i.id" style="border-bottom:1px solid #f5f5f5">
+                    <td style="padding:8px 4px">{{ i.name }}</td>
+                    <td style="text-align:center;padding:8px 4px;color:#888">{{ i.cat || '-' }}</td>
+                    <td style="text-align:right;padding:8px 4px">¥{{ i.price }}</td>
+                    <td style="text-align:center;padding:8px 4px">×{{ i.qty }}</td>
+                    <td style="text-align:center;padding:8px 4px">{{ i.seqs || '-' }}</td>
+                    <td style="text-align:right;padding:8px 4px;font-weight:500">¥{{ (i.price * i.qty).toFixed(2) }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- 直售商品 -->
+            <div v-if="meOrderDetail.type === 'sale' && meOrderDetail.items" class="me-detail-items">
+              <div v-for="i in meOrderDetail.items" :key="i.id" class="me-detail-item-row">
+                <img v-if="i.img" :src="i.img" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0" @click="showScreenshot(i.img)" />
+                <div v-else style="width:48px;height:48px;border-radius:8px;background:var(--brand-gradient-soft);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">{{ i.emoji || '🎁' }}</div>
+                <div style="flex:1;margin-left:10px">
+                  <div style="font-weight:500">{{ i.name }}</div>
+                  <div v-if="i.cat || i.ip" class="muted" style="font-size:12px">{{ i.cat }}{{ i.ip ? ' · ' + i.ip : '' }}</div>
+                  <div style="margin-top:2px"><span class="price">¥{{ i.price }}</span> × {{ i.qty }}</div>
+                </div>
+                <div class="price" style="font-weight:600">¥{{ ((i.price || 0) * (i.qty || 1)).toFixed(2) }}</div>
+              </div>
+            </div>
+            <!-- 拍卖商品 -->
+            <div v-if="meOrderDetail.type === 'auction'" class="me-detail-items">
+              <div class="me-detail-item-row">
+                <img v-if="meOrderDetail.img" :src="meOrderDetail.img" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0" @click="showScreenshot(meOrderDetail.img)" />
+                <div v-else style="width:48px;height:48px;border-radius:8px;background:var(--brand-gradient-soft);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">{{ meOrderDetail.emoji || '🔨' }}</div>
+                <div style="flex:1;margin-left:10px">
+                  <div style="font-weight:500">{{ meOrderDetail.name }}</div>
+                  <div class="muted" style="font-size:12px">拍卖品 · 数量 1</div>
+                </div>
+                <div class="price" style="font-weight:600">¥{{ meOrderDetail.curPrice || meOrderDetail.total }}</div>
+              </div>
+            </div>
+            <!-- 清货商品 -->
+            <div v-if="meOrderDetail.type === 'clear'" class="me-detail-items">
+              <div v-for="it in (meOrderDetail.items ? parseClearItems(meOrderDetail.items) : [])" :key="it.id || it.name" class="me-detail-item-row">
+                <img v-if="it.img" :src="it.img" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0" @click="showScreenshot(it.img)" />
+                <div v-else style="width:48px;height:48px;border-radius:8px;background:var(--brand-gradient-soft);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">{{ it.emoji || '🎁' }}</div>
+                <div style="flex:1;margin-left:10px">
+                  <div style="font-weight:500">{{ it.name }}</div>
+                  <div v-if="it.cat || it.ip" class="muted" style="font-size:12px">{{ it.cat }}{{ it.ip ? ' · ' + it.ip : '' }}</div>
+                  <div style="margin-top:2px"><span class="price">¥{{ it.price }}</span> × {{ it.qty }}</div>
+                </div>
+                <div class="price" style="font-weight:600">¥{{ ((it.price || 0) * (it.qty || 1)).toFixed(2) }}</div>
+              </div>
+            </div>
+            <!-- 转单商品 -->
+            <div v-if="meOrderDetail.type === 'transfer' && meOrderDetail.items" class="me-detail-items">
+              <div v-for="it in meOrderDetail.items" :key="it.id || it.name" class="me-detail-item-row">
+                <img v-if="it.img" :src="it.img" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0" @click="showScreenshot(it.img)" />
+                <div v-else style="width:48px;height:48px;border-radius:8px;background:var(--brand-gradient-soft);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">{{ it.emoji || '🔄' }}</div>
+                <div style="flex:1;margin-left:10px">
+                  <div style="font-weight:500">{{ it.name }}</div>
+                  <div style="margin-top:2px"><span class="price">¥{{ it.price }}</span> × {{ it.qty }}</div>
+                </div>
+                <div class="price" style="font-weight:600">¥{{ ((it.price || 0) * (it.qty || 1)).toFixed(2) }}</div>
+              </div>
+            </div>
+            <!-- 二次收肾 -->
+            <div v-if="meOrderDetail.type === 'second'" class="me-detail-items">
+              <div class="me-detail-item-row">
+                <div style="width:48px;height:48px;border-radius:8px;background:var(--brand-gradient-soft);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">📋</div>
+                <div style="flex:1;margin-left:10px">
+                  <div style="font-weight:500">{{ meOrderDetail.title }}</div>
+                  <div class="muted" style="font-size:12px">{{ meOrderDetail.calc }}</div>
+                </div>
+                <div class="price" style="font-weight:600">¥{{ meOrderDetail.amount || meOrderDetail.total }}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 价格明细 -->
+          <div class="me-detail-section">
+            <h4 class="me-detail-section-title">金额明细</h4>
+            <div class="me-detail-row">
+              <span class="me-detail-label">商品小计</span>
+              <span class="me-detail-value">¥{{ calculateSubtotal(meOrderDetail).toFixed(2) }}</span>
+            </div>
+            <div v-if="meOrderDetail.type === 'clear' || meOrderDetail.freightName" class="me-detail-row">
+              <span class="me-detail-label">运费</span>
+              <span class="me-detail-value">{{ meOrderDetail.freightName }} {{ meOrderDetail.freightAmount ? '¥' + meOrderDetail.freightAmount : '' }}</span>
+            </div>
+            <div v-if="meOrderDetail.type === 'clear' || meOrderDetail.packName" class="me-detail-row">
+              <span class="me-detail-label">包装</span>
+              <span class="me-detail-value">{{ meOrderDetail.packName }} {{ meOrderDetail.packAmount ? '¥' + meOrderDetail.packAmount : '' }}</span>
+            </div>
+            <div v-if="meOrderDetail.type === 'clear' && +meOrderDetail.overFee" class="me-detail-row">
+              <span class="me-detail-label">仓费</span>
+              <span class="me-detail-value">¥{{ meOrderDetail.overFee }}</span>
+            </div>
+            <div v-if="meOrderDetail.useBalanceAmount > 0" class="me-detail-row">
+              <span class="me-detail-label">余额抵扣</span>
+              <span class="me-detail-value green">-¥{{ meOrderDetail.useBalanceAmount.toFixed(2) }}</span>
+            </div>
+            <div class="me-detail-row total-row">
+              <span class="me-detail-label">合计</span>
+              <span class="price" style="font-size:18px;font-weight:700">¥{{ (meOrderDetail.total || meOrderDetail.amount || 0).toFixed(2) }}</span>
+            </div>
+          </div>
+
+          <!-- 收货地址 -->
+          <div v-if="meOrderDetail.addressSnapshot" class="me-detail-section">
+            <h4 class="me-detail-section-title">收货地址</h4>
+            <div class="me-detail-row">
+              <span class="me-detail-value" style="flex:1">
+                <template v-if="parseAddrSnapshot(meOrderDetail.addressSnapshot)">
+                  <b>{{ parseAddrSnapshot(meOrderDetail.addressSnapshot).recipientName }}</b> {{ parseAddrSnapshot(meOrderDetail.addressSnapshot).phone }}<br/>
+                  <span class="muted">{{ parseAddrSnapshot(meOrderDetail.addressSnapshot).region }}{{ parseAddrSnapshot(meOrderDetail.addressSnapshot).detail }}</span>
+                </template>
+                <span v-else class="muted">地址信息不完整</span>
+              </span>
+            </div>
+          </div>
+
+          <!-- 物流信息 -->
+          <div v-if="meOrderDetail.trackingNo || meOrderDetail.trackingImg" class="me-detail-section">
+            <h4 class="me-detail-section-title">物流信息</h4>
+            <div v-if="meOrderDetail.trackingNo" class="me-detail-row">
+              <span class="me-detail-label">物流单号</span>
+              <span class="me-detail-value">{{ meOrderDetail.trackingNo }}</span>
+            </div>
+            <div v-if="meOrderDetail.trackingImg" class="me-detail-row">
+              <span class="me-detail-label">物流截图</span>
+              <span class="todo-screenshot-link" @click="showScreenshot(meOrderDetail.trackingImg)">📷 查看</span>
+            </div>
+          </div>
+
+          <!-- 盲抽发货模式 -->
+          <div v-if="meOrderDetail.blindShipMode" class="me-detail-section">
+            <h4 class="me-detail-section-title">盲抽发货</h4>
+            <span class="tag" :class="meOrderDetail.blindShipMode === 'video' ? 'pink' : 'green'">{{ meOrderDetail.blindShipMode === 'video' ? '📹 需要视频选择且拆开' : '🎲 直接随机发货不拆开' }}</span>
+          </div>
+
+          <!-- 付款截图 -->
+          <div v-if="meOrderDetail.screenshot" class="me-detail-section">
+            <h4 class="me-detail-section-title">付款凭证</h4>
+            <div class="me-screenshot-preview">
+              <img :src="meOrderDetail.screenshot" style="max-width:100%;max-height:200px;border-radius:8px;cursor:zoom-in" @click="showScreenshot(meOrderDetail.screenshot)" />
+            </div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn gray" @click="showMeOrderDetail = false">关闭</button>
+        </div>
+      </div>
     </div>
 
-    <!-- 订单详情弹窗 -->
+    <!-- 订单详情弹窗（后台用） -->
     <div v-if="showOrderDetailModal" class="modal" @click.self="showOrderDetailModal = false">
       <div class="modal-card" style="max-width:480px">
         <h3>订单详情</h3>
@@ -2699,6 +2907,11 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- 截图预览模态（全局，admin 和 phone 视图共用） -->
+  <div v-if="showScreenshotModal" class="screenshot-modal" @click.self="showScreenshotModal = false">
+    <img :src="screenshotUrl" />
   </div>
 </template>
 
@@ -3146,9 +3359,9 @@ const clearEstTotal = computed(() => {
   return (f?.amt || 0) + (p?.amt || 0) + totalOverFee.value;
 });
 const allOrders = computed(() => {
-  const group = myBills.value.map(b => ({ type: 'group', raw: b, orderId: b.id, title: b.seriesName, state: b.state, items: b.items, total: b.total, time: b.createdAt || b.time || 0 }));
-  const sale = myBuys.value.map(o => ({ type: 'sale', raw: o, orderId: o.id, title: '', state: o.status, items: o.items, total: o.total, time: o.createdAt || o.time || 0, hours: o.hours }));
-  const auction = myAuctionOrders.value.map(a => ({ type: 'auction', raw: a, orderId: a.id, title: a.name, state: a.state, items: [{ name: a.name, qty: 1 }], total: a.curPrice, time: a.startTime || 0, hours: 0, isWinner: a.isWinner }));
+  const group = myBills.value.map(b => ({ raw: b, ...b, type: 'group', orderId: b.id, title: b.seriesName, state: b.state, time: b.createdAt || b.time || 0 }));
+  const sale = myBuys.value.map(o => ({ raw: o, ...o, type: 'sale', orderId: o.id, title: '', state: o.status, time: o.createdAt || o.time || 0 }));
+  const auction = myAuctionOrders.value.map(a => ({ raw: a, ...a, type: 'auction', orderId: a.id, title: a.name, state: a.state, items: [{ name: a.name, qty: 1 }], total: a.curPrice, time: a.startTime || 0 }));
   return [...group, ...sale, ...auction].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
 });
 const activeGroupOrders = computed(() => myGroupOrders.value.filter(o => o.status === '跟排中'));
@@ -3835,6 +4048,8 @@ const orderPagination = reactive({ page: 1, size: 20, total: 0 });
 const mergeSelectedIds = ref([]);
 const showOrderDetailModal = ref(false);
 const orderDetail = ref(null);
+const showMeOrderDetail = ref(false);
+const meOrderDetail = ref(null);
 const showSplitModal = ref(false);
 const splitOrder = ref(null);
 const splitItems = ref([]);
@@ -3913,6 +4128,53 @@ function orderStatusClass(status) {
     '已取消': 'gray',
   };
   return map[status] || 'gray';
+}
+
+function showMeOrderDetailModal(order) {
+  meOrderDetail.value = order;
+  showMeOrderDetail.value = true;
+}
+
+function getOrderCoverImage(order) {
+  if (!order) return '';
+  if (order.type === 'group' && order.seriesImg) return order.seriesImg;
+  if (order.type === 'sale' && order.items && order.items[0] && order.items[0].img) return order.items[0].img;
+  if (order.type === 'auction' && order.img) return order.img;
+  if (order.type === 'clear' && order.items) {
+    const items = parseClearItems(order.items);
+    for (const it of items) { if (it.img) return it.img; }
+  }
+  if (order.type === 'transfer' && order.items && order.items[0] && order.items[0].img) return order.items[0].img;
+  return '';
+}
+
+function getOrderEmoji(order) {
+  if (!order) return '📦';
+  if (order.type === 'group') return order.seriesEmoji || '🧩';
+  if (order.type === 'sale') return (order.items && order.items[0] && order.items[0].emoji) || '🛒';
+  if (order.type === 'auction') return order.emoji || '🔨';
+  if (order.type === 'clear') return '📦';
+  if (order.type === 'transfer') return '🔄';
+  if (order.type === 'second') return '📋';
+  return '📦';
+}
+
+function calculateSubtotal(order) {
+  if (!order) return 0;
+  if (order.type === 'group' && order.items) {
+    return order.items.reduce((s, i) => s + (+(i.price || 0) * +(i.qty || 1)), 0);
+  }
+  if (order.type === 'sale' && order.items) {
+    return order.items.reduce((s, i) => s + (+(i.price || 0) * +(i.qty || 1)), 0);
+  }
+  if (order.type === 'clear' && order.items) {
+    const items = parseClearItems(order.items);
+    return items.reduce((s, it) => s + (+(it.price || 0) * +(it.qty || 1)), 0);
+  }
+  if (order.type === 'transfer' && order.items) {
+    return order.items.reduce((s, i) => s + (+(i.price || 0) * +(i.qty || 1)), 0);
+  }
+  return +(order.total || order.amount || 0);
 }
 
 function openOrderDetail(o) {
