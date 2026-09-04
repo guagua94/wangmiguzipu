@@ -1,6 +1,7 @@
 [build]
 builder = "nixpacks"
 watchPatterns = ["/apps/web/**"]
+buildCommand = "cd apps/web && npm install && npx vite build --mode production"
 
 [deploy]
 startCommand = "cd apps/web && npm run preview"
