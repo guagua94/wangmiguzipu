@@ -1,0 +1,6 @@
+[build]
+builder = "nixpacks"
+watchPatterns = ["/apps/web/**"]
+
+[deploy]
+startCommand = "cd apps/web && npm run preview"
