@@ -112,6 +112,7 @@ async function bootstrap() {
     { name: 'mergeGroupId', type: 'VARCHAR(32)', default: "''" },
     { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
     { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
+    { name: 'parentId', type: 'INT', default: '0' },
     { name: 'mergeId', type: 'INT', default: '0' },
     { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
   ];
