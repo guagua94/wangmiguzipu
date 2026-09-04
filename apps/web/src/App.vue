@@ -1237,7 +1237,6 @@
 
   <!-- 团员 → C 端 -->
   <div v-else class="phone">
-    <div class="statusbar"><span>9:41</span><span>●●● 📶 🔋</span></div>
     <div class="content">
       <!-- 首页：Timeline 时间轴 -->
       <template v-if="tab === 'home'">
