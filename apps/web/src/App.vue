@@ -2617,44 +2617,28 @@
     <!-- 我的订单详情弹窗 -->
     <div v-if="showMeOrderDetail" class="modal-mask" @click.self="showMeOrderDetail = false">
       <div class="modal-card me-order-detail">
-        <h3 v-if="meOrderDetail">
-          <span class="order-type-tag" :class="meOrderDetail.type === 'group' ? 'pink' : meOrderDetail.type === 'sale' ? 'blue' : meOrderDetail.type === 'auction' ? 'orange' : meOrderDetail.type === 'clear' ? 'green' : 'gray'">
-            {{ meOrderDetail.typeLabel || (meOrderDetail.type === 'group' ? '拼团' : meOrderDetail.type === 'sale' ? '直售' : meOrderDetail.type === 'auction' ? '拍卖' : meOrderDetail.type === 'clear' ? '清货' : meOrderDetail.type === 'second' ? '二次收肾' : meOrderDetail.type === 'transfer' ? '转单' : '订单') }}
-          </span>
-          <span>订单详情</span>
-        </h3>
         <div v-if="meOrderDetail" class="me-detail-body">
-          <!-- 商品大图 -->
-          <div v-if="getOrderCoverImage(meOrderDetail)" class="me-order-cover">
-            <img :src="getOrderCoverImage(meOrderDetail)" @click="showScreenshot(getOrderCoverImage(meOrderDetail))" style="cursor:zoom-in" />
-          </div>
-          <div v-else-if="getOrderEmoji(meOrderDetail)" class="me-order-cover emoji-cover">
-            <span>{{ getOrderEmoji(meOrderDetail) }}</span>
-          </div>
-
-          <!-- 基本信息 -->
-          <div class="me-detail-section">
-            <div class="me-detail-row">
-              <span class="me-detail-label">订单号</span>
-              <span class="me-detail-value">#{{ meOrderDetail.id || meOrderDetail.orderId }}</span>
+          <!-- 顶部信息卡片 -->
+          <div class="me-order-header">
+            <div class="me-order-title-row">
+              <span class="me-order-emoji">📦</span>
+              <span class="me-order-no">订单 #{{ meOrderDetail.id || meOrderDetail.orderId }}</span>
+              <span class="order-status-pill" :class="getMeOrderStatusClass(meOrderDetail)">
+                {{ meOrderDetail.status || meOrderDetail.state }}
+              </span>
             </div>
-            <div class="me-detail-row">
-              <span class="me-detail-label">状态</span>
-              <span class="tag" :class="meOrderDetail.type === 'group' ? orderStatusClass(meOrderDetail.state) : orderStatusClass(meOrderDetail.status || meOrderDetail.state)">{{ meOrderDetail.status || meOrderDetail.state }}</span>
-            </div>
-            <div class="me-detail-row">
-              <span class="me-detail-label">下单时间</span>
-              <span class="me-detail-value">{{ fmtTime(meOrderDetail.createdAt || meOrderDetail.time) }}</span>
-            </div>
-            <div v-if="meOrderDetail.seriesName || meOrderDetail.title" class="me-detail-row">
-              <span class="me-detail-label">{{ meOrderDetail.type === 'group' ? '系列' : '用途' }}</span>
-              <span class="me-detail-value">{{ meOrderDetail.seriesName || meOrderDetail.title }}</span>
-            </div>
+            <div class="me-order-time">下单时间：{{ fmtTime(meOrderDetail.createdAt || meOrderDetail.time) }}</div>
           </div>
 
           <!-- 商品明细 -->
           <div class="me-detail-section">
-            <h4 class="me-detail-section-title">商品明细</h4>
+            <h4 class="me-detail-section-title">
+              商品明细
+              <span v-if="meOrderDetail.items && meOrderDetail.items.length" class="me-detail-count">({{ meOrderDetail.items.length }}件)</span>
+              <span v-else-if="meOrderDetail.type === 'clear' && parseClearItems(meOrderDetail.items).length" class="me-detail-count">({{ parseClearItems(meOrderDetail.items).length }}件)</span>
+              <span v-else class="me-detail-count">(1件)</span>
+            </h4>
+
             <!-- 拼团商品 -->
             <div v-if="meOrderDetail.type === 'group' && meOrderDetail.items" class="me-detail-items">
               <table style="width:100%;font-size:13px;border-collapse:collapse">
@@ -2682,15 +2666,25 @@
             </div>
             <!-- 直售商品 -->
             <div v-if="meOrderDetail.type === 'sale' && meOrderDetail.items" class="me-detail-items">
-              <div v-for="i in meOrderDetail.items" :key="i.id" class="me-detail-item-row">
-                <img v-if="i.img" :src="i.img" style="width:48px;height:48px;border-radius:8px;object-fit:cover;flex-shrink:0" @click="showScreenshot(i.img)" />
-                <div v-else style="width:48px;height:48px;border-radius:8px;background:var(--brand-gradient-soft);display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">{{ i.emoji || '🎁' }}</div>
-                <div style="flex:1;margin-left:10px">
-                  <div style="font-weight:500">{{ i.name }}</div>
-                  <div v-if="i.cat || i.ip" class="muted" style="font-size:12px">{{ i.cat }}{{ i.ip ? ' · ' + i.ip : '' }}</div>
-                  <div style="margin-top:2px"><span class="price">¥{{ i.price }}</span> × {{ i.qty }}</div>
+              <div v-for="i in meOrderDetail.items" :key="i.id" class="me-detail-item-card">
+                <div class="me-item-left">
+                  <img v-if="i.img" :src="i.img" class="me-item-img" @click="showScreenshot(i.img)" />
+                  <div v-else class="me-item-emoji">{{ i.emoji || '🎁' }}</div>
                 </div>
-                <div class="price" style="font-weight:600">¥{{ ((i.price || 0) * (i.qty || 1)).toFixed(2) }}</div>
+                <div class="me-item-right">
+                  <div class="me-item-name">{{ i.name }}</div>
+                  <div class="me-item-meta">
+                    <span>类型：{{ i.cat || '明款' }}</span>
+                    <span class="me-item-meta-sep">|</span>
+                    <span>所属：{{ i.ownerCn || '店主' }}</span>
+                  </div>
+                  <div class="me-item-price-row">
+                    <span class="price">¥{{ i.price }}</span>
+                    <span class="me-item-qty">× {{ i.qty }}</span>
+                    <span class="me-item-eq">=</span>
+                    <span class="price me-item-subtotal">¥{{ ((i.price || 0) * (i.qty || 1)).toFixed(2) }}</span>
+                  </div>
+                </div>
               </div>
             </div>
             <!-- 拍卖商品 -->
@@ -2743,32 +2737,35 @@
             </div>
           </div>
 
-          <!-- 价格明细 -->
+          <!-- 金额明细 -->
           <div class="me-detail-section">
             <h4 class="me-detail-section-title">金额明细</h4>
-            <div class="me-detail-row">
-              <span class="me-detail-label">商品小计</span>
-              <span class="me-detail-value">¥{{ calculateSubtotal(meOrderDetail).toFixed(2) }}</span>
-            </div>
-            <div v-if="meOrderDetail.type === 'clear' || meOrderDetail.freightName" class="me-detail-row">
-              <span class="me-detail-label">运费</span>
-              <span class="me-detail-value">{{ meOrderDetail.freightName }} {{ meOrderDetail.freightAmount ? '¥' + meOrderDetail.freightAmount : '' }}</span>
-            </div>
-            <div v-if="meOrderDetail.type === 'clear' || meOrderDetail.packName" class="me-detail-row">
-              <span class="me-detail-label">包装</span>
-              <span class="me-detail-value">{{ meOrderDetail.packName }} {{ meOrderDetail.packAmount ? '¥' + meOrderDetail.packAmount : '' }}</span>
-            </div>
-            <div v-if="meOrderDetail.type === 'clear' && +meOrderDetail.overFee" class="me-detail-row">
-              <span class="me-detail-label">仓费</span>
-              <span class="me-detail-value">¥{{ meOrderDetail.overFee }}</span>
-            </div>
-            <div v-if="meOrderDetail.useBalanceAmount > 0" class="me-detail-row">
-              <span class="me-detail-label">余额抵扣</span>
-              <span class="me-detail-value green">-¥{{ meOrderDetail.useBalanceAmount.toFixed(2) }}</span>
-            </div>
-            <div class="me-detail-row total-row">
-              <span class="me-detail-label">合计</span>
-              <span class="price" style="font-size:18px;font-weight:700">¥{{ (meOrderDetail.total || meOrderDetail.amount || 0).toFixed(2) }}</span>
+            <div class="me-amount-list">
+              <div class="me-amount-row">
+                <span class="me-amount-label">商品小计</span>
+                <span class="me-amount-value">¥{{ calculateSubtotal(meOrderDetail).toFixed(2) }}</span>
+              </div>
+              <div v-if="meOrderDetail.type === 'clear' && meOrderDetail.freightAmount" class="me-amount-row">
+                <span class="me-amount-label">运费（{{ meOrderDetail.freightName }}）</span>
+                <span class="me-amount-value">¥{{ meOrderDetail.freightAmount }}</span>
+              </div>
+              <div v-if="meOrderDetail.type === 'clear' && meOrderDetail.packAmount" class="me-amount-row">
+                <span class="me-amount-label">打包费（{{ meOrderDetail.packName }}）</span>
+                <span class="me-amount-value">¥{{ meOrderDetail.packAmount }}</span>
+              </div>
+              <div v-if="meOrderDetail.type === 'clear' && +meOrderDetail.overFee" class="me-amount-row">
+                <span class="me-amount-label">超期仓费</span>
+                <span class="me-amount-value">¥{{ meOrderDetail.overFee }}</span>
+              </div>
+              <div v-if="meOrderDetail.useBalanceAmount > 0" class="me-amount-row me-amount-deduct">
+                <span class="me-amount-label">余额抵扣</span>
+                <span class="me-amount-value">-¥{{ meOrderDetail.useBalanceAmount.toFixed(2) }}</span>
+              </div>
+              <div class="me-amount-divider"></div>
+              <div class="me-amount-row me-amount-total">
+                <span class="me-amount-label">合计</span>
+                <span class="me-amount-value price">¥{{ (meOrderDetail.total || meOrderDetail.amount || 0).toFixed(2) }}</span>
+              </div>
             </div>
           </div>
 
@@ -2813,8 +2810,8 @@
             </div>
           </div>
         </div>
-        <div class="modal-actions">
-          <button class="btn gray" @click="showMeOrderDetail = false">关闭</button>
+        <div class="me-detail-footer">
+          <button class="btn me-detail-close-btn" @click="showMeOrderDetail = false">关闭</button>
         </div>
       </div>
     </div>
@@ -4126,6 +4123,21 @@ function orderStatusClass(status) {
     '已发货': 'purple',
     '已完成': 'gray',
     '已取消': 'gray',
+  };
+  return map[status] || 'gray';
+}
+
+function getMeOrderStatusClass(order) {
+  const status = order.status || order.state;
+  const map = {
+    '待付款': 'orange',
+    '待审核': 'blue',
+    '已销账': 'green',
+    '囤货中': 'green',
+    '已发货': 'blue',
+    '已完成': 'gray',
+    '已取消': 'red',
+    '打回': 'red',
   };
   return map[status] || 'gray';
 }

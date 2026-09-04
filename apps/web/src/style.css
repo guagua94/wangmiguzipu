@@ -367,6 +367,185 @@ tr:hover td { background: var(--brand-bg2); }
 
 .me-screenshot-preview { margin-top: 8px; }
 .me-screenshot-preview img { width: 100%; object-fit: cover; border-radius: var(--r-md); }
+
+/* ===== 直售订单详情弹窗 新样式 ===== */
+.me-order-header {
+  background: linear-gradient(135deg, #f8f6ff 0%, #f0edff 100%);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.me-order-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.me-order-emoji {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.me-order-no {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--t1);
+  flex: 1;
+}
+.me-order-time {
+  font-size: 13px;
+  color: var(--t3);
+}
+
+/* 状态标签 pill */
+.order-status-pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #fff;
+  flex-shrink: 0;
+}
+.order-status-pill.orange { background: #FF9500; }
+.order-status-pill.green { background: #34C759; }
+.order-status-pill.blue { background: #007AFF; }
+.order-status-pill.gray { background: #8E8E93; }
+.order-status-pill.red { background: #FF3B30; }
+
+/* 商品卡片 */
+.me-detail-item-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  background: #fafafa;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+.me-detail-item-card:last-child {
+  margin-bottom: 0;
+}
+.me-item-left {
+  flex-shrink: 0;
+}
+.me-item-img {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  object-fit: cover;
+  cursor: zoom-in;
+}
+.me-item-emoji {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  background: var(--brand-gradient-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+}
+.me-item-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+.me-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--t1);
+}
+.me-item-meta {
+  font-size: 12px;
+  color: var(--t3);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.me-item-meta-sep {
+  color: #ddd;
+}
+.me-item-price-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  margin-top: 2px;
+}
+.me-item-qty {
+  color: var(--t3);
+}
+.me-item-eq {
+  color: #ddd;
+}
+.me-item-subtotal {
+  font-weight: 600;
+}
+
+/* 金额明细 - 收据式对齐 */
+.me-amount-list {
+  background: #fafafa;
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.me-amount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+}
+.me-amount-label {
+  color: var(--t3);
+}
+.me-amount-value {
+  color: var(--t1);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.me-amount-deduct .me-amount-label,
+.me-amount-deduct .me-amount-value {
+  color: #34C759;
+}
+.me-amount-divider {
+  height: 1px;
+  background: var(--line2);
+  margin: 8px 0;
+}
+.me-amount-total {
+  padding-top: 4px;
+}
+.me-amount-total .me-amount-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--t1);
+}
+.me-amount-total .me-amount-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* 底部按钮 */
+.me-detail-footer {
+  padding: 16px 0 0;
+  border-top: 1px solid var(--line);
+  margin-top: 8px;
+}
+.me-detail-close-btn {
+  width: 100%;
+  height: 44px;
+  font-size: 15px;
+  font-weight: 500;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-md);
+}
+.me-detail-close-btn:hover {
+  opacity: 0.9;
+}
 }
 
 /* ===== 付款审核流式卡片 ===== */
