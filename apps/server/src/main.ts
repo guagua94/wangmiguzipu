@@ -87,6 +87,7 @@ async function bootstrap() {
     { name: 'mergeId', type: 'INT', default: '0' },
     { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
     { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
+    { name: 'parentId', type: 'INT', default: '0' },
   ];
   for (const col of kbCols) {
     try { await ds.query(`ALTER TABLE kidney_bills ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
@@ -112,6 +113,7 @@ async function bootstrap() {
     { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
     { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
     { name: 'mergeId', type: 'INT', default: '0' },
+    { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
   ];
   for (const col of aucCols) {
     try { await ds.query(`ALTER TABLE auctions ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`); }
