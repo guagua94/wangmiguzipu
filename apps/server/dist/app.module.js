@@ -65,6 +65,7 @@ const notify_1 = require("./modules/notify");
 const second_1 = require("./modules/second");
 const address_1 = require("./modules/address");
 const upload_1 = require("./modules/upload");
+const order_1 = require("./modules/order");
 const isPostgres = !!process.env.DATABASE_URL;
 const dbFile = path.join(__dirname, '..', 'wangmi.db');
 if (!isPostgres && !fs.existsSync(dbFile))
@@ -174,17 +175,18 @@ exports.AppModule = AppModule = __decorate([
             typeorm_1.TypeOrmModule.forRoot(dbConfig),
             typeorm_1.TypeOrmModule.forFeature(entities_1.entities),
             address_1.AddressModuleRef,
+            order_1.OrderModuleRef,
         ],
         controllers: [
             auth_1.AuthController, user_1.UserController, shop_1.ShopController, group_1.GroupController,
             balance_1.BalanceController, sale_1.SaleController, auction_1.AuctionController, transfer_1.TransferController,
             clearing_1.ClearingController, aftersale_1.AfterSaleController, notify_1.NotifyController, second_1.SecondController,
-            address_1.AddressController, upload_1.UploadController,
+            address_1.AddressController, upload_1.UploadController, order_1.OrderController,
         ],
         providers: [
             auth_1.AuthService, user_1.UserService, shop_1.ShopService, group_1.GroupService, balance_1.BalanceService,
             sale_1.SaleService, auction_1.AuctionService, transfer_1.TransferService, clearing_1.ClearingService,
-            aftersale_1.AfterSaleService, notify_1.NotifyService, second_1.SecondService, address_1.AddressService,
+            aftersale_1.AfterSaleService, notify_1.NotifyService, second_1.SecondService, address_1.AddressService, order_1.OrderService,
             AutoJietuanTask,
         ],
     }),

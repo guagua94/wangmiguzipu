@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.entities = exports.AdminLog = exports.Address = exports.Withdrawal = exports.AfterSale = exports.Clearing = exports.Transfer = exports.AuctionDeposit = exports.AuctionBid = exports.Auction = exports.SaleGood = exports.SecondBill = exports.KidneyBill = exports.OrderItem = exports.Order = exports.Good = exports.Series = exports.ShopConfig = exports.Notification = exports.BalanceFlow = exports.User = exports.Money = void 0;
+exports.entities = exports.MergedShipment = exports.AdminLog = exports.Address = exports.Withdrawal = exports.AfterSale = exports.Clearing = exports.Transfer = exports.AuctionDeposit = exports.AuctionBid = exports.Auction = exports.SaleGood = exports.SecondBill = exports.KidneyBill = exports.OrderItem = exports.Order = exports.Good = exports.Series = exports.ShopConfig = exports.Notification = exports.BalanceFlow = exports.User = exports.Money = void 0;
 const typeorm_1 = require("typeorm");
 /** 金额统一 DECIMAL(10,2)，以字符串形式读写，杜绝浮点误差 */
 class Money {
@@ -378,6 +378,26 @@ __decorate([
     __metadata("design:type", Date)
 ], Order.prototype, "cancelRequestAt", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ default: '' }),
+    __metadata("design:type", String)
+], Order.prototype, "orderNo", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Number)
+], Order.prototype, "parentId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Number)
+], Order.prototype, "mergeId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Order.prototype, "isSplit", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Order.prototype, "isMerged", void 0);
+__decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
 ], Order.prototype, "createdAt", void 0);
@@ -467,6 +487,26 @@ __decorate([
     (0, typeorm_1.Column)({ default: '', type: 'text' }),
     __metadata("design:type", String)
 ], KidneyBill.prototype, "opLog", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: '' }),
+    __metadata("design:type", String)
+], KidneyBill.prototype, "orderNo", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Number)
+], KidneyBill.prototype, "parentId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Number)
+], KidneyBill.prototype, "mergeId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], KidneyBill.prototype, "isSplit", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], KidneyBill.prototype, "isMerged", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
@@ -658,6 +698,26 @@ __decorate([
     (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
     __metadata("design:type", Date)
 ], Auction.prototype, "stockSince", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: '' }),
+    __metadata("design:type", String)
+], Auction.prototype, "orderNo", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Number)
+], Auction.prototype, "parentId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: 0 }),
+    __metadata("design:type", Number)
+], Auction.prototype, "mergeId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Auction.prototype, "isSplit", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: false }),
+    __metadata("design:type", Boolean)
+], Auction.prototype, "isMerged", void 0);
 __decorate([
     (0, typeorm_1.CreateDateColumn)(),
     __metadata("design:type", Date)
@@ -1024,8 +1084,69 @@ __decorate([
 exports.AdminLog = AdminLog = __decorate([
     (0, typeorm_1.Entity)('admin_logs')
 ], AdminLog);
+/** 合并发货单（合单深度整合） */
+let MergedShipment = class MergedShipment {
+};
+exports.MergedShipment = MergedShipment;
+__decorate([
+    (0, typeorm_1.PrimaryGeneratedColumn)(),
+    __metadata("design:type", Number)
+], MergedShipment.prototype, "id", void 0);
+__decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", String)
+], MergedShipment.prototype, "mergeGroupId", void 0);
+__decorate([
+    (0, typeorm_1.Column)(),
+    __metadata("design:type", Number)
+], MergedShipment.prototype, "ownerId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'simple-json' }),
+    __metadata("design:type", Array)
+], MergedShipment.prototype, "sourceOrderIds", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2 }),
+    __metadata("design:type", String)
+], MergedShipment.prototype, "freight", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2 }),
+    __metadata("design:type", String)
+], MergedShipment.prototype, "packFee", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 10, scale: 2 }),
+    __metadata("design:type", String)
+], MergedShipment.prototype, "total", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: '' }),
+    __metadata("design:type", String)
+], MergedShipment.prototype, "addressSnapshot", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: '待发货' }),
+    __metadata("design:type", String)
+], MergedShipment.prototype, "status", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: '' }),
+    __metadata("design:type", String)
+], MergedShipment.prototype, "trackingNo", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ default: '' }),
+    __metadata("design:type", String)
+], MergedShipment.prototype, "packImg", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'timestamp', nullable: true }),
+    __metadata("design:type", Date)
+], MergedShipment.prototype, "shippedAt", void 0);
+__decorate([
+    (0, typeorm_1.CreateDateColumn)(),
+    __metadata("design:type", Date)
+], MergedShipment.prototype, "createdAt", void 0);
+exports.MergedShipment = MergedShipment = __decorate([
+    (0, typeorm_1.Entity)('merged_shipments'),
+    (0, typeorm_1.Index)(['ownerId']),
+    (0, typeorm_1.Index)(['mergeGroupId'])
+], MergedShipment);
 exports.entities = [
     User, BalanceFlow, Notification, ShopConfig, Series, Good, Order, OrderItem,
     KidneyBill, SecondBill, SaleGood, Auction, AuctionBid, AuctionDeposit,
-    Transfer, Clearing, AfterSale, Withdrawal, Address, AdminLog,
+    Transfer, Clearing, AfterSale, Withdrawal, Address, AdminLog, MergedShipment,
 ];

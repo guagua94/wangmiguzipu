@@ -21,7 +21,7 @@ const common_2 = require("../common");
 const shop_1 = require("./shop");
 const balance_1 = require("./balance");
 let ClearingService = class ClearingService {
-    constructor(repo, userRepo, orderRepo, itemRepo, goodRepo, saleRepo, addrRepo, auctionRepo, shop, balance) {
+    constructor(repo, userRepo, orderRepo, itemRepo, goodRepo, saleRepo, addrRepo, auctionRepo, mergeRepo, shop, balance) {
         this.repo = repo;
         this.userRepo = userRepo;
         this.orderRepo = orderRepo;
@@ -30,6 +30,7 @@ let ClearingService = class ClearingService {
         this.saleRepo = saleRepo;
         this.addrRepo = addrRepo;
         this.auctionRepo = auctionRepo;
+        this.mergeRepo = mergeRepo;
         this.shop = shop;
         this.balance = balance;
     }
@@ -225,6 +226,56 @@ let ClearingService = class ClearingService {
     async notify(uid, title, body) {
         await this.userRepo.manager.getRepository(entities_1.Notification).save(this.userRepo.manager.getRepository(entities_1.Notification).create({ userId: uid, title, body }));
     }
+    /** 团员查看自己的合并发货单 */
+    async myMerges(uid) {
+        const merges = await this.mergeRepo.find({ where: { ownerId: uid }, order: { id: 'desc' } });
+        return merges;
+    }
+    /** 团员提交合并发货单的付款截图 */
+    async submitMerge(uid, id, screenshot, useBalanceAmount) {
+        const m = await this.mergeRepo.findOneByOrFail({ id });
+        if (m.ownerId !== uid)
+            throw new common_1.BadRequestException('无权操作');
+        if (m.status !== '待发货')
+            throw new common_1.BadRequestException('该合并发货单状态不支持付款');
+        const total = +m.total;
+        let useBal = Math.max(0, Math.min(useBalanceAmount || 0, total));
+        let rest = total;
+        if (useBal > 0) {
+            await this.balance.debit(uid, useBal, '合单发货抵扣', `合并发货 ${m.mergeGroupId} 余额抵扣 ¥${useBal.toFixed(2)}`, `MG${id}`);
+            rest = total - useBal;
+            await this.mergeRepo.update(id, { total: rest.toFixed(2) });
+        }
+        if (rest <= 0) {
+            await this.mergeRepo.update(id, { status: '待发货', addressSnapshot: m.addressSnapshot });
+            return { paidOff: true, usedBalance: useBal };
+        }
+        if (!screenshot)
+            throw new common_1.BadRequestException(`需扫码支付 ¥${rest.toFixed(2)}，请上传付款截图`);
+        return { paidOff: false, rest, usedBalance: useBal };
+    }
+    /** 店主发货合并发货单 */
+    async shipMerge(id, trackingNo, packImg) {
+        await this.mergeRepo.update(id, { status: '已发货', trackingNo, packImg, shippedAt: new Date() });
+        const m = await this.mergeRepo.findOneByOrFail({ id });
+        await this.notify(m.ownerId, '合并发货已发货', `合并发货单 ${m.mergeGroupId} 物流单号：${trackingNo}`);
+        return { ok: true };
+    }
+    /** 团员确认收货合并发货单 */
+    async confirmMergeReceive(id, uid) {
+        const m = await this.mergeRepo.findOneByOrFail({ id });
+        if (m.ownerId !== uid || m.status !== '已发货')
+            throw new common_1.BadRequestException('状态错误');
+        await this.mergeRepo.update(id, { status: '已完成' });
+        await this.notify(uid, '合并发货已收货', `合并发货单 ${m.mergeGroupId} 已确认收货`);
+        return { ok: true };
+    }
+    /** 店主查看所有合并发货单 */
+    async allMerges() {
+        const merges = await this.mergeRepo.find({ order: { id: 'desc' } });
+        const us = merges.length ? await this.userRepo.find({ where: { id: (0, typeorm_2.In)(merges.map(m => m.ownerId)) } }) : [];
+        return merges.map(m => ({ ...m, cn: us.find(u => u.id === m.ownerId)?.cn || '' }));
+    }
 };
 exports.ClearingService = ClearingService;
 exports.ClearingService = ClearingService = __decorate([
@@ -236,7 +287,9 @@ exports.ClearingService = ClearingService = __decorate([
     __param(5, (0, typeorm_1.InjectRepository)(entities_1.SaleGood)),
     __param(6, (0, typeorm_1.InjectRepository)(entities_1.Address)),
     __param(7, (0, typeorm_1.InjectRepository)(entities_1.Auction)),
+    __param(8, (0, typeorm_1.InjectRepository)(entities_1.MergedShipment)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
@@ -286,6 +339,26 @@ let ClearingController = class ClearingController {
     async autoConfirmReceive(req) {
         (0, common_2.checkRole)(req.user, ['owner', 'admin']);
         return this.svc.autoConfirmReceive();
+    }
+    async myMerges(req) {
+        (0, common_2.checkRole)(req.user, ['banned-allowed']);
+        return this.svc.myMerges(req.user.id);
+    }
+    async allMerges(req) {
+        (0, common_2.checkRole)(req.user, ['owner', 'admin']);
+        return this.svc.allMerges();
+    }
+    async submitMerge(req, b) {
+        (0, common_2.checkRole)(req.user, []);
+        return this.svc.submitMerge(req.user.id, b.id, b.screenshot || '', b.useBalanceAmount);
+    }
+    async shipMerge(req, b) {
+        (0, common_2.checkRole)(req.user, ['owner', 'admin']);
+        return this.svc.shipMerge(b.id, b.trackingNo, b.packImg || '');
+    }
+    async confirmMergeReceive(req, b) {
+        (0, common_2.checkRole)(req.user, ['banned-allowed']);
+        return this.svc.confirmMergeReceive(b.id, req.user.id);
     }
 };
 exports.ClearingController = ClearingController;
@@ -358,8 +431,46 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], ClearingController.prototype, "autoConfirmReceive", null);
+__decorate([
+    (0, common_1.Get)('merges/mine'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ClearingController.prototype, "myMerges", null);
+__decorate([
+    (0, common_1.Get)('merges/all'),
+    __param(0, (0, common_1.Req)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object]),
+    __metadata("design:returntype", Promise)
+], ClearingController.prototype, "allMerges", null);
+__decorate([
+    (0, common_1.Post)('merges/submit'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], ClearingController.prototype, "submitMerge", null);
+__decorate([
+    (0, common_1.Post)('merges/ship'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], ClearingController.prototype, "shipMerge", null);
+__decorate([
+    (0, common_1.Post)('merges/confirm-receive'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], ClearingController.prototype, "confirmMergeReceive", null);
 exports.ClearingController = ClearingController = __decorate([
     (0, common_1.Controller)('clearing'),
     __metadata("design:paramtypes", [ClearingService])
 ], ClearingController);
-exports.ClearingModuleRef = typeorm_1.TypeOrmModule.forFeature([entities_1.Clearing, entities_1.User, entities_1.Order, entities_1.OrderItem, entities_1.Good, entities_1.SaleGood, entities_1.Address, entities_1.Auction]);
+exports.ClearingModuleRef = typeorm_1.TypeOrmModule.forFeature([entities_1.Clearing, entities_1.User, entities_1.Order, entities_1.OrderItem, entities_1.Good, entities_1.SaleGood, entities_1.Address, entities_1.Auction, entities_1.MergedShipment]);

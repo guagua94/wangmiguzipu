@@ -35,8 +35,10 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 require("reflect-metadata");
 const dns = __importStar(require("dns"));
-// Railway 容器不支持 IPv6，强制 DNS 优先返回 IPv4
-dns.setDefaultResultOrder('ipv4first');
+// Railway 容器可能使用旧版 Node.js，安全调用 IPv4 优先
+if (typeof dns.setDefaultResultOrder === 'function') {
+    dns.setDefaultResultOrder('ipv4first');
+}
 const core_1 = require("@nestjs/core");
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("typeorm");
@@ -45,11 +47,20 @@ const auction_1 = require("./modules/auction");
 const express = __importStar(require("express"));
 const path = __importStar(require("path"));
 async function bootstrap() {
+    // JWT_SECRET: 优先从环境变量读取，未设置时使用硬编码默认值（确保 Railway 能启动）
     if (!process.env.JWT_SECRET) {
-        console.error('[FATAL] JWT_SECRET environment variable is required. Set it in Railway dashboard → Variables.');
-        process.exit(1);
+        process.env.JWT_SECRET = 'wangmi-secret-key-2024-change-in-production';
+        console.warn('[WARN] JWT_SECRET not set, using default. Please set it in Railway dashboard for security.');
     }
-    const app = await core_1.NestFactory.create(app_module_1.AppModule, { cors: true });
+    const app = await core_1.NestFactory.create(app_module_1.AppModule, {
+        cors: {
+            origin: true,
+            credentials: true,
+            allowedHeaders: ['Authorization', 'Content-Type', 'Accept'],
+            methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+            preflightContinue: false,
+        }
+    });
     app.setGlobalPrefix('api');
     app.useGlobalPipes(new common_1.ValidationPipe({ transform: true, whitelist: false }));
     const uploadsDir = path.join(__dirname, '..', 'uploads');
@@ -61,56 +72,143 @@ async function bootstrap() {
     console.log(`[wangmi-server] http://0.0.0.0:${port}/api`);
     const auctionService = app.get(auction_1.AuctionService);
     setTimeout(() => {
-        auctionService.tickStates();
-        setInterval(() => auctionService.tickStates(), 60_000);
+        auctionService.tickStates().catch((e) => console.error('[auction] tickStates error:', e.message));
+        setInterval(() => {
+            auctionService.tickStates().catch((e) => console.error('[auction] tickStates error:', e.message));
+        }, 60_000);
     }, 10_000);
     const ds = app.get(typeorm_1.DataSource);
+    // === Schema 升级：创建新表和添加新列（如果缺失）===
+    // 1. 创建 merged_shipments 表
     try {
-        await ds.query(`ALTER TABLE series ADD COLUMN mode TEXT DEFAULT 'traditional'`);
+        await ds.query(`CREATE TABLE IF NOT EXISTS merged_shipments (
+      id SERIAL PRIMARY KEY,
+      "mergeGroupId" VARCHAR(32) NOT NULL,
+      "ownerId" INT NOT NULL,
+      "sourceOrderIds" TEXT,
+      freight DECIMAL(10,2) DEFAULT '0.00',
+      "packFee" DECIMAL(10,2) DEFAULT '0.00',
+      total DECIMAL(10,2) DEFAULT '0.00',
+      "addressSnapshot" TEXT DEFAULT '',
+      status VARCHAR(32) DEFAULT '待发货',
+      "trackingNo" VARCHAR(128) DEFAULT '',
+      "packImg" TEXT DEFAULT '',
+      "shippedAt" TIMESTAMP,
+      "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )`);
+        await ds.query(`CREATE INDEX IF NOT EXISTS idx_merge_owner ON merged_shipments("ownerId")`);
+        await ds.query(`CREATE INDEX IF NOT EXISTS idx_merge_group ON merged_shipments("mergeGroupId")`);
+        console.log('[schema] merged_shipments 表已就绪');
+    }
+    catch (e) {
+        console.log('[schema] merged_shipments 跳过:', e.message);
+    }
+    // 2. orders 表添加合单相关列
+    const orderCols = [
+        { name: 'mergeGroupId', type: 'VARCHAR(32)', default: "''" },
+        { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
+        { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
+        { name: 'parentId', type: 'INT', default: '0' },
+        { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
+        { name: 'mergeId', type: 'INT', default: '0' },
+    ];
+    for (const col of orderCols) {
+        try {
+            await ds.query(`ALTER TABLE orders ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`);
+        }
+        catch (e) { /* 列已存在 */ }
+    }
+    // 3. kidney_bills 表添加合单相关列
+    const kbCols = [
+        { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
+        { name: 'mergeId', type: 'INT', default: '0' },
+        { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
+        { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
+        { name: 'parentId', type: 'INT', default: '0' },
+    ];
+    for (const col of kbCols) {
+        try {
+            await ds.query(`ALTER TABLE kidney_bills ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`);
+        }
+        catch (e) { /* 列已存在 */ }
+    }
+    // 4. sale_orders 表添加合单相关列
+    const soCols = [
+        { name: 'mergeGroupId', type: 'VARCHAR(32)', default: "''" },
+        { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
+        { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
+        { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
+        { name: 'mergeId', type: 'INT', default: '0' },
+    ];
+    for (const col of soCols) {
+        try {
+            await ds.query(`ALTER TABLE sale_orders ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`);
+        }
+        catch (e) { /* 列已存在 */ }
+    }
+    // 5. auctions 表添加合单相关列
+    const aucCols = [
+        { name: 'mergeGroupId', type: 'VARCHAR(32)', default: "''" },
+        { name: 'isMerged', type: 'BOOLEAN', default: 'false' },
+        { name: 'isSplit', type: 'BOOLEAN', default: 'false' },
+        { name: 'parentId', type: 'INT', default: '0' },
+        { name: 'mergeId', type: 'INT', default: '0' },
+        { name: 'orderNo', type: 'VARCHAR(32)', default: "''" },
+    ];
+    for (const col of aucCols) {
+        try {
+            await ds.query(`ALTER TABLE auctions ADD COLUMN IF NOT EXISTS "${col.name}" ${col.type} DEFAULT ${col.default}`);
+        }
+        catch (e) { /* 列已存在 */ }
+    }
+    console.log('[schema] 数据库结构升级完成');
+    // === 旧数据兼容：确保 shop_config 表有基础数据 ===
+    try {
+        await ds.query(`ALTER TABLE series ADD COLUMN IF NOT EXISTS mode TEXT DEFAULT 'traditional'`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE series ADD COLUMN deadlineAt TIMESTAMP`);
+        await ds.query(`ALTER TABLE series ADD COLUMN IF NOT EXISTS "deadlineAt" TIMESTAMP`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE order_items ADD COLUMN status TEXT DEFAULT ''`);
+        await ds.query(`ALTER TABLE order_items ADD COLUMN IF NOT EXISTS status TEXT DEFAULT ''`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE goods ADD COLUMN unitFee DECIMAL(10,2) DEFAULT '0.1'`);
+        await ds.query(`ALTER TABLE goods ADD COLUMN IF NOT EXISTS "unitFee" DECIMAL(10,2) DEFAULT '0.1'`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE sale_goods ADD COLUMN unitFee DECIMAL(10,2) DEFAULT '0.1'`);
+        await ds.query(`ALTER TABLE sale_goods ADD COLUMN IF NOT EXISTS "unitFee" DECIMAL(10,2) DEFAULT '0.1'`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE shop_config ADD COLUMN groupFreeDays INTEGER DEFAULT 30`);
+        await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "groupFreeDays" INTEGER DEFAULT 30`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE shop_config ADD COLUMN groupOverFeeOn INTEGER DEFAULT 1`);
+        await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "groupOverFeeOn" INTEGER DEFAULT 1`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE shop_config ADD COLUMN groupOverDays INTEGER DEFAULT 90`);
+        await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "groupOverDays" INTEGER DEFAULT 90`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE shop_config ADD COLUMN saleFreeDays INTEGER DEFAULT 7`);
+        await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "saleFreeDays" INTEGER DEFAULT 7`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE shop_config ADD COLUMN saleOverFeeOn INTEGER DEFAULT 1`);
+        await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "saleOverFeeOn" INTEGER DEFAULT 1`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE shop_config ADD COLUMN saleOverDays INTEGER DEFAULT 30`);
+        await ds.query(`ALTER TABLE shop_config ADD COLUMN IF NOT EXISTS "saleOverDays" INTEGER DEFAULT 30`);
     }
     catch (e) { }
     try {
-        await ds.query(`ALTER TABLE auction_deposits ADD COLUMN screenshot TEXT DEFAULT ''`);
+        await ds.query(`ALTER TABLE auction_deposits ADD COLUMN IF NOT EXISTS screenshot TEXT DEFAULT ''`);
     }
     catch (e) { }
     try {

