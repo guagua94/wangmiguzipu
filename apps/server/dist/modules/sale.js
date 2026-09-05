@@ -38,6 +38,16 @@ let SaleService = class SaleService {
         return r.filter(g => g.stock > 0).sort((a, b) => b.id - a.id);
     }
     async save(b) {
+        // 验证 ownerCn 存在性（非店主/空时必须是注册团员）
+        if (b.ownerCn && b.ownerCn !== '店主') {
+            const owner = await this.userRepo.findOneBy({ cn: b.ownerCn });
+            if (!owner)
+                throw new common_1.BadRequestException(`所属者CN「${b.ownerCn}」不存在，请检查团员是否已注册`);
+        }
+        // commissionRate 默认 0%
+        if (b.commissionRate === undefined && !b.id) {
+            b.commissionRate = '0.00';
+        }
         if (b.id) {
             await this.repo.update(b.id, b);
             return this.repo.findOneByOrFail({ id: b.id });
@@ -65,10 +75,17 @@ let SaleService = class SaleService {
         for (const r of rows) {
             if (!r.name)
                 continue;
+            // 验证 ownerCn 存在性
+            if (r.ownerCn && r.ownerCn !== '店主') {
+                const owner = await this.userRepo.findOneBy({ cn: r.ownerCn });
+                if (!owner)
+                    continue; // 跳过无效 ownerCn，导入时静默忽略
+            }
             const g = await this.repo.save(this.repo.create({
                 name: r.name, ip: r.ip || '', cat: r.cat || '全新未拆单领',
                 price: (+r.price).toFixed(2), stock: +r.stock || 1,
                 emoji: r.emoji || '🎁', ownerCn: r.ownerCn || '店主',
+                commissionRate: r.commissionRate !== undefined ? (+r.commissionRate).toFixed(2) : '0.00',
             }));
             if (!g.no)
                 await this.repo.update(g.id, { no: 'ZS-' + String(g.id).padStart(4, '0') });

@@ -603,6 +603,10 @@ __decorate([
     __metadata("design:type", String)
 ], SaleGood.prototype, "ownerCn", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ type: 'decimal', precision: 4, scale: 2, default: '0.00' }),
+    __metadata("design:type", String)
+], SaleGood.prototype, "commissionRate", void 0);
+__decorate([
     (0, typeorm_1.Column)({ default: '' }),
     __metadata("design:type", String)
 ], SaleGood.prototype, "statusText", void 0);

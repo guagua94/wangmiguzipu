@@ -161,6 +161,11 @@ async function bootstrap() {
         }
         catch (e) { /* 列已存在 */ }
     }
+    // 6. sale_goods 表添加 commissionRate 列（代售费）
+    try {
+        await ds.query(`ALTER TABLE sale_goods ADD COLUMN IF NOT EXISTS "commissionRate" DECIMAL(4,2) DEFAULT '0.00'`);
+    }
+    catch (e) { /* 列已存在 */ }
     console.log('[schema] 数据库结构升级完成');
     // === 旧数据兼容：确保 shop_config 表有基础数据 ===
     try {

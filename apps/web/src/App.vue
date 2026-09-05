@@ -738,6 +738,10 @@
               <input v-model="newSaleGood.ownerCn" placeholder="谷子原主人CN（可选）" style="width:100%" />
             </div>
             <div>
+              <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">代售费率（%）</label>
+              <input v-model.number="newSaleGood.commissionRate" type="number" min="0" max="100" placeholder="0=免费代卖" style="width:100%" />
+            </div>
+            <div>
               <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">囤货费率</label>
               <select v-model.number="newSaleGood.unitFee" style="width:100%">
                 <option :value="0.1">0.1（默认）</option>
@@ -757,7 +761,7 @@
           <p style="font-size:12px;color:#999;margin:0">编号由系统自动生成，无需填写</p>
         </div>
         <table class="styled-table">
-          <thead><tr><th>谷子</th><th>编号</th><th>IP</th><th>分类</th><th>价格</th><th>库存</th><th>状态</th><th>操作</th></tr></thead>
+          <thead><tr><th>谷子</th><th>编号</th><th>IP</th><th>分类</th><th>价格</th><th>库存</th><th>所属者</th><th>代售费率</th><th>状态</th><th>操作</th></tr></thead>
           <tbody>
             <tr v-for="g in adminFilteredSaleGoods" :key="g.id">
               <td>
@@ -804,6 +808,14 @@
               <div>
                 <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">库存</label>
                 <input v-model.number="saleGoodEditForm.stock" type="number" placeholder="1" style="width:100%" />
+              </div>
+              <div>
+                <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">所属者CN</label>
+                <input v-model="saleGoodEditForm.ownerCn" placeholder="谷子原主人CN（可选）" style="width:100%" />
+              </div>
+              <div>
+                <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">代售费率（%）</label>
+                <input v-model.number="saleGoodEditForm.commissionRate" type="number" min="0" max="100" placeholder="0=免费代卖" style="width:100%" />
               </div>
               <div>
                 <label style="font-size:12px;color:#666;display:block;margin-bottom:4px">囤货费率</label>
@@ -1436,6 +1448,7 @@
               <span v-else class="tag gray">已售</span>
             </div>
             <p class="muted" v-if="curSaleGood.ownerCn" style="margin-top:6px">所属者CN：{{ curSaleGood.ownerCn }}</p>
+            <p class="muted" v-if="curSaleGood.commissionRate" style="margin-top:2px">代售费率：{{ curSaleGood.commissionRate }}%（售完后扣除费率后计入所属者余额）</p>
             <p class="muted" v-if="curSaleGood.statusText" style="margin-top:2px">状态文本：{{ curSaleGood.statusText }}</p>
             <p class="muted" v-if="curSaleGood.unitFee" style="margin-top:2px">品类囤货费率：{{ curSaleGood.unitFee }} 元/件/天</p>
           </div>
@@ -4444,7 +4457,7 @@ const newAuction = reactive({ name: '', startPrice: 20, stepPrice: 2, buyNow: 80
 const newAuctionStart = ref('');
 const newAuctionEnd = ref('');
 const showAuctionForm = ref(false);
-const newSaleGood = reactive({ name: '', no: '', ip: '', cat: '', type: '全新未拆', ownerCn: '', price: 0, stock: 1, unitFee: 0.1, img: '' });
+const newSaleGood = reactive({ name: '', no: '', ip: '', cat: '', type: '全新未拆', ownerCn: '', commissionRate: 0, price: 0, stock: 1, unitFee: 0.1, img: '' });
 const showSaleForm = ref(false);
 const newSeries = reactive({ name: '', ip: '', emoji: '🧩', status: '进行中', mode: 'traditional', deadlineAt: '' });
 const showSeriesForm = ref(false);
@@ -4459,7 +4472,7 @@ const gwUnpaidReminders = ref([]);
 
 /* 谷子编辑弹窗表单 */
 const goodEditForm = reactive({ show: false, id: 0, name: '', emoji: '', cat: '', price: 0, limit: 0, unitFee: 0.1 });
-const saleGoodEditForm = reactive({ show: false, id: 0, name: '', emoji: '', cat: '', price: 0, stock: 0, unitFee: 0.1, img: '' });
+const saleGoodEditForm = reactive({ show: false, id: 0, name: '', emoji: '', cat: '', price: 0, stock: 0, unitFee: 0.1, commissionRate: 0, ownerCn: '', img: '' });
 const newSeriesBtnRef = ref(null);
 
 /* ===== 拍卖编辑/重新上架表单 ===== */
@@ -4842,24 +4855,24 @@ async function addSaleGood() {
     const autoNo = 'Z' + String(now.getFullYear()).slice(-2) + String(now.getMonth()+1).padStart(2,'0') + String(now.getDate()).padStart(2,'0') + '-' + rand;
     await api('POST', '/sale/save', { ...newSaleGood, no: autoNo, emoji: '🧸' });
     newSaleGood.name = ''; newSaleGood.no = ''; newSaleGood.ip = ''; newSaleGood.cat = '';
-    newSaleGood.type = '全新未拆'; newSaleGood.ownerCn = ''; newSaleGood.img = '';
+    newSaleGood.type = '全新未拆'; newSaleGood.ownerCn = ''; newSaleGood.commissionRate = 0; newSaleGood.img = '';
     alert('上架成功'); loadAdmin();
   } catch (e) { alert('上架失败：' + e.message); }
 }
 function editSaleGood(g) {
-  Object.assign(saleGoodEditForm, { show: true, id: g.id, name: g.name, emoji: g.emoji || '🧸', cat: g.cat || '', price: +g.price || 0, stock: +g.stock || 0, unitFee: +g.unitFee || 0.1, img: g.img || '' });
+  Object.assign(saleGoodEditForm, { show: true, id: g.id, name: g.name, emoji: g.emoji || '🧸', cat: g.cat || '', price: +g.price || 0, stock: +g.stock || 0, unitFee: +g.unitFee || 0.1, commissionRate: +g.commissionRate || 0, ownerCn: g.ownerCn || '', img: g.img || '' });
 }
 async function submitSaleGoodEdit() {
   const f = saleGoodEditForm;
   if (!f.name) return alert('请填写名称');
   if (!f.price || +f.price <= 0) return alert('价格必须大于0');
   if (!f.stock || +f.stock < 0) return alert('库存不能为负数');
-  await api('POST', '/sale/save', { id: f.id, name: f.name, price: +f.price, stock: +f.stock, cat: f.cat, emoji: f.emoji, unitFee: +f.unitFee, img: f.img || '' });
+  await api('POST', '/sale/save', { id: f.id, name: f.name, price: +f.price, stock: +f.stock, cat: f.cat, emoji: f.emoji, unitFee: +f.unitFee, commissionRate: +f.commissionRate || 0, ownerCn: f.ownerCn || '', img: f.img || '' });
   alert('修改已保存'); saleGoodEditForm.show = false; loadAdmin();
 }
 async function restockSaleGood(g) {
   const qty = +prompt('补充数量', '10');
-    await api('POST', '/sale/save', { id: g.id, stock: g.stock + qty, name: g.name, price: g.price, no: g.no, ip: g.ip, cat: g.cat, emoji: g.emoji, unitFee: g.unitFee });
+    await api('POST', '/sale/save', { id: g.id, stock: g.stock + qty, name: g.name, price: g.price, no: g.no, ip: g.ip, cat: g.cat, emoji: g.emoji, unitFee: g.unitFee, commissionRate: g.commissionRate || 0, ownerCn: g.ownerCn || '' });
   alert('已补库存'); loadAdmin();
 }
 async function markSaleArrive(g) {
@@ -4879,7 +4892,7 @@ async function deleteSaleGood(g) {
 }
 async function exportSaleCSV() {
   if (!saleGoods.value.length) return alert('没有可导出的直售');
-  const rows = saleGoods.value.map(g => ({编号:g.no,名称:g.name,IP:g.ip,品类:g.cat,价格:g.price,库存:g.stock,所属者CN:g.ownerCn,状态:g.statusText||''}));
+  const rows = saleGoods.value.map(g => ({编号:g.no,名称:g.name,IP:g.ip,品类:g.cat,价格:g.price,库存:g.stock,所属者CN:g.ownerCn||'店主',代售费率:(g.commissionRate||0)+'%',状态:g.statusText||''}));
   downloadCSV('直售列表.csv', rows);
 }
 async function importSaleCSV() {
@@ -4887,7 +4900,7 @@ async function importSaleCSV() {
     const rows = await pickCSVFile();
     if (!rows.length) return alert('CSV 为空或格式错误');
     for (const r of rows) {
-      await api('POST', '/sale/save', { name: r.名称||r.name, no: r.编号||r.no||'', ip: r.IP||r.ip||'', cat: r.品类||r.cat||'', price: +(r.价格||r.price||0), stock: +(r.库存||r.stock||1), emoji: '🧸', unitFee: 0.1 });
+      await api('POST', '/sale/save', { name: r.名称||r.name, no: r.编号||r.no||'', ip: r.IP||r.ip||'', cat: r.品类||r.cat||'', price: +(r.价格||r.price||0), stock: +(r.库存||r.stock||1), emoji: '🧸', commissionRate: +(r.代售费率||r.commissionRate||0), ownerCn: r.所属者CN||r.ownerCn||'' });
     }
     alert('导入完成'); loadAdmin();
   } catch (e) { alert(e.message); }

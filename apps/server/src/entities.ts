@@ -200,6 +200,7 @@ export class SaleGood {
   @Column({ default: 1 }) stock: number;
   @Column({ default: '0.1' }) unitFee: string;          // 品类日囤货费率(元/件/天)
   @Column({ default: '店主' }) ownerCn: string;        // 所属者CN
+  @Column({ type: 'decimal', precision: 4, scale: 2, default: '0.00' }) commissionRate: string; // 代售费率（百分比，如5.00=5%）
   @Column({ default: '' }) statusText: string;         // 店主自定义状态文本
   @CreateDateColumn() createdAt: Date;
 }
