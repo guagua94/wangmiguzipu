@@ -3,4 +3,4 @@ builder = "nixpacks"
 watchPatterns = ["/apps/web/**", "/apps/web/dist/**"]
 
 [deploy]
-startCommand = "cd apps/web && npx vite build --mode production && npx vite preview --port 3000 --host"
+startCommand = "cd apps/web && npm install && npm run preview"
