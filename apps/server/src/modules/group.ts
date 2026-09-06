@@ -23,14 +23,14 @@ export class GroupService {
     const goods = ids.length ? await this.goodRepo.find({ where: { seriesId: In(ids) } }) : [];
     return ss.map(s => {
       const gs = goods.filter(g => g.seriesId === s.id);
-      return { ...s, goodCount: gs.length, cats: [...new Set(gs.map(g => g.cat))] };
+      return { ...s, img: s.cover, goodCount: gs.length, cats: [...new Set(gs.map(g => g.cat))] };
     });
   }
 
   async seriesDetail(id: number) {
     const s = await this.seriesRepo.findOneByOrFail({ id });
     const goods = await this.goodRepo.find({ where: { seriesId: id }, order: { id: 'asc' } });
-    return { series: s, goods };
+    return { series: { ...s, img: s.cover }, goods };
   }
 
   async createSeries(b: Partial<Series>, uid: number) {
@@ -324,20 +324,53 @@ ${new Date().toISOString()} ${auditor?.cn || '系统'} 砍单：${item.name} ×$
     return { bills: orders.length };
   }
 
-  /** 我的肾表 */
+  /** 我的拼团记录（含跟排中Order + 截团后KidneyBill） */
   async myBills(uid: number) {
+    // 1. 截团后的肾表
     const bills = await this.billRepo.find({ where: { userId: uid }, order: { id: 'desc' } });
-    const orders = bills.length ? await this.orderRepo.find({ where: { id: In(bills.map(b => b.orderId)) } }) : [];
-    const items = await this.itemRepo.find({ where: { orderId: In(orders.map(o => o.id) || [0]) } });
-    const names = bills.map(b => {
-      const o = orders.find(x => x.id === b.orderId);
-      return { ...b, seriesName: o ? '' : '', items: items.filter(i => i.orderId == b.orderId) };
-    });
-    const ss = bills.length ? await this.seriesRepo.find({ where: { id: In(bills.map(b => b.seriesId)) } }) : [];
-    return names.map(b => {
+    const billOrders = bills.length ? await this.orderRepo.find({ where: { id: In(bills.map(b => b.orderId)) } }) : [];
+    const billItems = bills.length ? await this.itemRepo.find({ where: { orderId: In(billOrders.map(o => o.id) || [0]) } }) : [];
+
+    // 2. 跟排中的订单（截团前）
+    const activeOrders = await this.orderRepo.find({ where: { userId: uid, status: '跟排中' }, order: { id: 'desc' } });
+    const activeItems = activeOrders.length ? await this.itemRepo.find({ where: { orderId: In(activeOrders.map(o => o.id)) } }) : [];
+
+    // 合并所有涉及的系列ID
+    const allSeriesIds = [...new Set([...bills.map(b => b.seriesId), ...activeOrders.map(o => o.seriesId)])];
+    const ss = allSeriesIds.length ? await this.seriesRepo.find({ where: { id: In(allSeriesIds) } }) : [];
+
+    const result: any[] = [];
+
+    // 跟排中的订单（截团前）
+    for (const o of activeOrders) {
+      const s = ss.find(x => x.id === o.seriesId);
+      result.push({
+        id: o.id,
+        userId: o.userId,
+        seriesId: o.seriesId,
+        orderId: o.id,
+        total: o.total,
+        state: '跟排中',
+        items: activeItems.filter(i => i.orderId == o.id),
+        seriesName: s?.name || '',
+        seriesEmoji: s?.emoji || '',
+        seriesImg: s?.cover || '',
+      });
+    }
+
+    // 截团后的肾表
+    for (const b of bills) {
       const s = ss.find(x => x.id === b.seriesId);
-      return { ...b, seriesName: s?.name || '', seriesEmoji: s?.emoji || '' };
-    });
+      result.push({
+        ...b,
+        seriesName: s?.name || '',
+        seriesEmoji: s?.emoji || '',
+        seriesImg: s?.cover || '',
+        items: billItems.filter(i => i.orderId == b.orderId),
+      });
+    }
+
+    return result;
   }
 
   /** 提交付款截图 */
@@ -408,19 +441,63 @@ ${new Date().toISOString()} ${auditor?.cn || '系统'} 砍单：${item.name} ×$
     return { ok: true };
   }
 
-  /** 全部肾表（后台） */
+  /** 全部拼团记录（含跟排中Order + 截团后KidneyBill，后台用） */
   async allBills() {
+    // 1. 截团后的肾表
     const bills = await this.billRepo.find({ order: { id: 'desc' } });
-    const users = bills.length ? await this.userRepo.find({ where: { id: In(bills.map(b => b.userId)) } }) : [];
-    const ss = bills.length ? await this.seriesRepo.find({ where: { id: In(bills.map(b => b.seriesId)) } }) : [];
-    return bills.map(b => {
-      const s = ss.find(x => x.id === b.seriesId);
-      return {
-        ...b, cn: users.find(u => u.id === b.userId)?.cn || '',
-        seriesName: s?.name || '', seriesEmoji: s?.emoji || '',
+    const billUserIds = [...new Set(bills.map(b => b.userId))];
+    const billSeriesIds = [...new Set(bills.map(b => b.seriesId))];
+    const billUsers = billUserIds.length ? await this.userRepo.find({ where: { id: In(billUserIds) } }) : [];
+    const billSeries = billSeriesIds.length ? await this.seriesRepo.find({ where: { id: In(billSeriesIds) } }) : [];
+
+    // 2. 跟排中的订单（截团前）
+    const activeOrders = await this.orderRepo.find({ where: { status: '跟排中' }, order: { id: 'desc' } });
+    const activeUserIds = [...new Set(activeOrders.map(o => o.userId))];
+    const activeSeriesIds = [...new Set(activeOrders.map(o => o.seriesId))];
+    const activeUsers = activeUserIds.length ? await this.userRepo.find({ where: { id: In(activeUserIds) } }) : [];
+    const activeSeries = activeSeriesIds.length ? await this.seriesRepo.find({ where: { id: In(activeSeriesIds) } }) : [];
+    const activeItems = activeOrders.length ? await this.itemRepo.find({ where: { orderId: In(activeOrders.map(o => o.id)) } }) : [];
+    const billOrderIds = bills.map(b => b.orderId).filter(Boolean);
+    const billItems = billOrderIds.length ? await this.itemRepo.find({ where: { orderId: In(billOrderIds) } }) : [];
+
+    const result: any[] = [];
+
+    // 跟排中的订单
+    for (const o of activeOrders) {
+      const s = activeSeries.find(x => x.id === o.seriesId);
+      const u = activeUsers.find(x => x.id === o.userId);
+      result.push({
+        id: o.id,
+        userId: o.userId,
+        cn: u?.cn || '',
+        seriesId: o.seriesId,
+        orderId: o.id,
+        total: o.total,
+        state: '跟排中',
+        seriesName: s?.name || '',
+        seriesEmoji: s?.emoji || '',
+        seriesImg: s?.cover || '',
         seriesStatus: s?.status || '',
-      };
-    });
+        items: activeItems.filter(i => i.orderId == o.id),
+      });
+    }
+
+    // 截团后的肾表
+    for (const b of bills) {
+      const s = billSeries.find(x => x.id === b.seriesId);
+      const u = billUsers.find(x => x.id === b.userId);
+      result.push({
+        ...b,
+        cn: u?.cn || '',
+        seriesName: s?.name || '',
+        seriesEmoji: s?.emoji || '',
+        seriesImg: s?.cover || '',
+        seriesStatus: s?.status || '',
+        items: billItems.filter(i => i.orderId == b.orderId),
+      });
+    }
+
+    return result;
   }
 
   /** 到货标记（单/多谷子） */

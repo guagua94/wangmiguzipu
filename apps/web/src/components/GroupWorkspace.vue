@@ -6,6 +6,7 @@
       <button class="btn mini" @click="$emit('add-good')">＋ 添加谷子</button>
       <button class="btn gray mini" @click="$emit('export-matrix')">📤 导出谷子矩阵</button>
       <button class="btn gray mini" @click="$emit('export-members')">📤 导出团员汇总</button>
+      <button v-if="canJietuan" class="btn mini" style="background:var(--brand);color:#fff" @click="$emit('jietuan')">🔴 手动截团</button>
       <span style="margin-left:8px">🔢 批量调价</span>
       <select v-model.number="localPriceOp" style="width:auto">
         <option value="add">＋ 加</option>
@@ -124,12 +125,13 @@ const props = defineProps({
   unpaidReminders: { type: Array, default: () => [] },
   priceOp: { type: String, default: 'mul' },
   priceVal: { type: Number, default: 0.9 },
+  canJietuan: { type: Boolean, default: false },
 });
 
 const emit = defineEmits([
   'go-back', 'add-good', 'export-matrix', 'export-members',
   'batch-price', 'mark-arrive', 'edit-good', 'cut-good', 'delete-good',
-  'remind', 'mark-paid'
+  'remind', 'mark-paid', 'jietuan'
 ]);
 
 const localPriceOp = ref(props.priceOp);

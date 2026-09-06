@@ -336,6 +336,7 @@
             :unpaidReminders="gwUnpaidReminders"
             :priceOp="priceOp"
             :priceVal="priceVal"
+            :canJietuan="gwCanJietuan"
             @go-back="closeGroupWorkspace"
             @add-good="showAddGoodForm = true"
             @export-matrix="exportGroupMatrixCSV"
@@ -347,6 +348,7 @@
             @delete-good="deleteGood"
             @remind="remindUnpaid"
             @mark-paid="markUnpaidPaid"
+            @jietuan="jietuanSelected"
           />
         </template>
 
@@ -1310,7 +1312,7 @@
                   <b style="font-size:15px">{{ b.seriesName }}</b>
                   <div class="muted" style="font-size:12px;margin-top:2px">¥{{ b.total }} · {{ b.items?.length || 0 }}件</div>
                 </div>
-                <span :class="['tag', b.state === '待付款' ? 'orange' : b.state === '已销账' ? 'green' : 'pink']">{{ b.state }}</span>
+                <span :class="['tag', b.state === '待付款' ? 'orange' : b.state === '已销账' ? 'green' : b.state === '跟排中' ? 'pink' : 'pink']">{{ b.state }}</span>
                 <span style="color:var(--t4);font-size:20px;margin-left:8px">›</span>
               </div>
               <!-- 谷子明细 -->
@@ -1360,7 +1362,8 @@
           </div>
           <div class="card">
             <div v-for="g in filteredGoods" :key="g.id" class="good">
-              <div class="gimg">{{ g.emoji }}</div>
+              <img v-if="g.img" :src="g.img" class="gimg" style="width:56px;height:56px;border-radius:10px;object-fit:cover;border:1px solid #eee" @click.stop="showScreenshot(g.img)" />
+              <div v-else class="gimg">{{ g.emoji }}</div>
               <div class="ginfo">
                 <div class="gname">{{ g.name }}</div>
                 <div class="muted" style="margin-top:2px">{{ g.cat }}</div>
@@ -3369,7 +3372,9 @@ const clearEstTotal = computed(() => {
   return (f?.amt || 0) + (p?.amt || 0) + totalOverFee.value;
 });
 const allOrders = computed(() => {
-  const group = myBills.value.map(b => ({ raw: b, ...b, type: 'group', orderId: b.id, title: b.seriesName, state: b.state, time: b.createdAt || b.time || 0 }));
+  const groupBills = myBills.value.filter(b => b.state !== '跟排中').map(b => ({ raw: b, ...b, type: 'group', orderId: b.id, title: b.seriesName, state: b.state, time: b.createdAt || b.time || 0 }));
+  const groupFollows = myGroupOrders.value.filter(o => o.status === '跟排中').map(o => ({ raw: o, ...o, type: 'group', orderId: o.id, title: '系列#' + o.seriesId, state: '跟排中', items: o.items || [], total: o.total, time: o.createdAt || o.time || 0 }));
+  const group = [...groupBills, ...groupFollows];
   const sale = myBuys.value.map(o => ({ raw: o, ...o, type: 'sale', orderId: o.id, title: '', state: o.status, time: o.createdAt || o.time || 0 }));
   const auction = myAuctionOrders.value.map(a => ({ raw: a, ...a, type: 'auction', orderId: a.id, title: a.name, state: a.state, items: [{ name: a.name, qty: 1 }], total: a.curPrice, time: a.startTime || 0 }));
   return [...group, ...sale, ...auction].sort((a, b) => new Date(b.time || 0) - new Date(a.time || 0));
@@ -4469,6 +4474,10 @@ const seriesCards = computed(() => buildSeriesCards(seriesList.value, allBills.v
 const gwMatrix = ref([]);
 const gwMemberSummary = ref([]);
 const gwUnpaidReminders = ref([]);
+const gwCanJietuan = computed(() => {
+  const s = seriesList.value.find(x => x.id === curSeriesId.value);
+  return s && (s.status === '进行中' || s.status === '预排');
+});
 
 /* 谷子编辑弹窗表单 */
 const goodEditForm = reactive({ show: false, id: 0, name: '', emoji: '', cat: '', price: 0, limit: 0, unitFee: 0.1 });
@@ -4645,7 +4654,9 @@ async function jietuan(id) {
   if (!confirm('确认截团？将冻结排表并生成肾表通知团员')) return;
   try {
     const r = await api('POST', '/group/jietuan', { seriesId: id });
-    alert('已截团，生成 ' + r.bills + ' 张肾表'); loadAdmin();
+    alert('已截团，生成 ' + r.bills + ' 张肾表');
+    await loadAdmin();
+    if (groupWorkspaceView.value) await refreshGroupWorkspace();
   } catch (e) { alert(e.message); }
 }
 function jietuanSelected() { curSeriesId.value ? jietuan(curSeriesId.value) : alert('请先展开一个系列'); }
@@ -5354,7 +5365,7 @@ async function go(k) {
       try { shopCfg.value = await api('GET', '/shop/config'); } catch {}
     }
   }
-  if (k === 'group') { curSeries.value = null; await loadSeries(); if (!myBills.value.length) await loadMe(); }
+  if (k === 'group') { curSeries.value = null; await loadSeries(); await loadMe(); }
   if (k === 'sale') await loadSale();
   if (k === 'auction') await loadAuctions();
   if (k === 'me') { meSubTab.value = ''; await loadMe().catch(() => {}); }
